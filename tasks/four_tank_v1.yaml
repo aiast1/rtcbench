@@ -1,0 +1,109 @@
+# four_tank_v1 — minimum-phase quadruple tank, mismatch tier
+#
+# The pack's introductory task. Diagonal pairing works here, so a competent PI submission
+# should land somewhere near the reference; the point of this one is to exercise the whole
+# pipeline honestly, not to be hard. The non-minimum-phase sibling (four_tank_nmp_v1) is
+# where the diagonal pairing stops working and the task gets interesting.
+#
+# IMMUTABLE ONCE PUBLISHED. Changing any value here changes what every historical score
+# means. Cut four_tank_v2 instead.
+
+task_id: four_tank_v1
+tier: mismatch
+
+description: >
+  Two pumps feed four interconnected tanks. Pump 1 sends most of its flow to tank 1 and the
+  remainder to tank 4; pump 2 sends most of its flow to tank 2 and the remainder to tank 3.
+  Tanks 3 and 4 drain into tanks 1 and 2 respectively, so each pump reaches each lower tank
+  by two paths with different time constants. Only the two lower tank levels are
+  instrumented. All four tanks overflow at 20 cm, including the two you cannot measure.
+  Outflow is by gravity through a fixed orifice, so loop gain falls as level falls.
+
+plant:
+  kind: four_tank
+  preset: P_minus
+  sample_time: 2.0
+  substeps: 20
+  nominal_v: [3.0, 3.0]
+  h_max: 20.0
+  # No lower trip. Nothing takes suction from the drain tanks, so an empty tank 3 is not a
+  # hazard — it is just a pump that has been shut. An earlier draft tripped at 0.2 cm and
+  # made "close pump 2 for a while" an automatic fail, which punished a correct response to
+  # a high initial level. Overflow is the real hazard on this rig, and it is one-sided.
+  h_min: 0.0
+  # Relative log-normal spread applied per scenario. The controller is told the NOMINAL
+  # parameters (mismatch tier) and runs against a draw from this.
+  #
+  # Sized against the initial condition, not by taste. Level goes as 1/a^2, so an area
+  # spread of 0.05 put some draws at h2 = 18.4 cm before the controller had done anything —
+  # 1.6 cm from an overflow that would gate the scenario no matter who was controlling it.
+  # A scenario no controller can pass is noise in the ensemble. At 0.03 the initial spread
+  # is h2 in [10.7, 15.9] against a 20 cm limit: still a hard robustness test, still winnable.
+  mismatch:
+    a1: 0.03
+    a2: 0.03
+    a3: 0.03
+    a4: 0.03
+    k1: 0.025
+    k2: 0.025
+    gamma1: 0.02
+    gamma2: 0.02
+
+horizon: 1200.0
+controlled: [0, 1]
+
+# Values are ordered like `controlled`. A step, then a ramp, then a return: a controller
+# tuned only against steps often mishandles a slow ramp, where the integrator has time to
+# wind up before the process catches on.
+setpoints:
+  - { t: 0,    values: [12.26, 12.78] }
+  - { t: 200,  values: [14.00, 12.78] }
+  - { t: 500,  values: [14.00, 11.20], ramp: 60 }
+  - { t: 900,  values: [12.26, 12.78] }
+
+# Tank 1's outlet orifice opens up mid-run: a leak, arriving while the loops are settled.
+disturbances:
+  - { t: 700, params: { a1: 0.088 } }
+
+instruments:
+  sensors:
+    noise_std: 0.03          # cm, level transmitter
+    deadtime_samples: 1      # one scan of transport delay
+    quantization: 0.01       # cm
+    dropout_prob: 0.001
+  actuators:
+    rate_limit: 0.5          # V/s pump slew
+    deadband: 0.02           # V of stiction
+
+scoring:
+  w_error: 1.0
+  w_effort: 0.1
+  cvar_alpha: 0.10
+
+budget:
+  step_seconds: 0.05
+  max_overruns: 20
+
+# The 1.0 anchor. Published in full so it can be argued with — an under-tuned reference
+# inflates every score on this task, so how it was obtained is part of the task, not a
+# footnote.
+#
+# Provenance: coordinate descent over (kp, ti, beta) per loop, minimizing mean scenario cost
+# on the first 6 seeds, then re-checked on all 20. The first draft of this file carried
+# kp=[1.50,1.35] ti=[30,40] by hand and was beaten by the naive example submission in
+# examples/pi_controller.py — which is exactly the failure the anchor is supposed to make
+# impossible, so it was retuned. The cost surface is flat across kp 1.8-2.2 and ti 20-25
+# (<1% spread), so these gains are a genuine optimum rather than a knife-edge fit; pushing
+# to kp=3.0 is 23% worse and nearly doubles valve movement.
+#
+# Tuned on the dev seeds it anchors. That is acceptable for a published, inspectable
+# baseline everyone competes against equally, and it is stated here rather than assumed.
+reference:
+  kind: pid
+  pairing: [0, 1]
+  kp: [2.0, 2.0]
+  ti: [20.0, 20.0]
+  beta: [1.0, 1.0]
+
+scenarios:
+  seeds: [11, 23, 37, 41, 59, 67, 73, 89, 97, 103, 127, 149, 163, 179, 191, 211, 227, 239, 251, 269]

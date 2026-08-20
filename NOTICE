@@ -1,0 +1,13 @@
+RTCbench
+Copyright (c) 2026 RTCbench contributors
+
+This project originated at Acaysia (https://github.com/AcaysiaChem) and is
+intended to be governed independently of it.
+
+The core package has no Acaysia dependencies. Proprietary and copyleft
+simulation engines integrate through the same rtcbench.plant.Plant protocol as
+every other backend, out of tree, and do not host scored tasks -- see DESIGN.md
+sections 1, 2 and 7.
+
+Process models in rtcbench/plants/ are independent reimplementations from
+published equations. Sources are cited in each module's docstring.
