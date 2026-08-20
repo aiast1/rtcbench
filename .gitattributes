@@ -1,0 +1,6 @@
+# Normalize to LF in the repository. The project promises identical behaviour on any
+# platform, and a task file or a golden record that differs by line ending across
+# checkouts would undercut that in the least obvious way possible.
+* text=auto eol=lf
+*.svg text eol=lf
+*.png binary
