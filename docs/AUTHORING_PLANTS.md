@@ -133,9 +133,29 @@ Tune it with the shared tuner rather than by hand:
 python experiments/tune_reference.py --task tasks/your_plant_v1.yaml --apply
 ```
 
-Then record in a comment above the `reference:` block: how you tuned it, how flat the cost
-surface is around the optimum, and what a detuned version costs. If a naive PI beats your
-reference, your reference is wrong, not the naive PI.
+Run it in the **foreground**. It takes a few minutes. Do not background it and wait for a
+notification: every author in the first round did exactly that, ended their turn waiting,
+got re-invoked, waited again, and two tasks shipped with placeholder gains as a result.
+
+Then apply the result and record its provenance:
+
+```bash
+python experiments/apply_reference.py --task tasks/your_plant_v1.yaml --pairing 0 --kp 1.8 --ti 20 --cost 0.0039 --flatness "+/-25% on kp costs 1-3%" --max-tv 0.017
+```
+
+Three lessons from the first round of plants, each of which cost a task:
+
+* **Tune on ALL 20 seeds if your plant has multiple interacting loops or per-element
+  deadtimes.** The default 6-seed tuning left the Shell fractionator gated on one of the
+  other 14: a gain set that is safe on a sample is not necessarily safe on the ensemble.
+  Single-loop plants are fine with the default.
+* **A correct integral time can be in the thousands of seconds.** If your plant has an RHP
+  zero or dominant deadtime, expect `ti` in the hundreds or thousands and do not "fix" it.
+  The boiler drum's optimum is `ti = 2000 s`; an earlier grid that stopped at 200 s reported
+  that no safe tuning existed at all, which reads as "impossible task" but means "the grid
+  did not contain the answer".
+* **If a naive PI beats your reference, your reference is wrong, not the naive PI.** Retune
+  before shipping. This inflates every score on your task, permanently.
 
 Set `max_total_variation` to roughly 4x the tuned reference's `tv` — high enough not to
 punish necessary control action, low enough to catch a controller holding setpoint by
