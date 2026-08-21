@@ -88,8 +88,17 @@ class Budget:
 @dataclass(frozen=True)
 class Scoring:
     w_error: float = 1.0
-    w_effort: float = 0.1
+    w_effort: float = 0.5
+    """Weight on actuator travel. Raised from an initial 0.1 after the first full field:
+    at 0.1 the effort term was ~5% of cost, and a submission moving the valve 24x more than
+    the reference still scored +0.507."""
+
     cvar_alpha: float = 0.10
+
+    max_total_variation: float | None = None
+    """Actuator duty ceiling, in the same normalized units as ``Cost.tv``. Exceeding it
+    gates the scenario. Published per task; set it a few multiples above a well-tuned
+    controller so it catches chatter without punishing necessary control action."""
 
 
 @dataclass(frozen=True)

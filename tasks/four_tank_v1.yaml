@@ -77,8 +77,13 @@ instruments:
 
 scoring:
   w_error: 1.0
-  w_effort: 0.1
+  # Raised from 0.1 after the first full field: at 0.1 the effort term was ~5% of cost and a
+  # submission moving the valve 24x more than the reference still scored +0.507.
+  w_effort: 0.5
   cvar_alpha: 0.10
+  # Actuator duty ceiling, ~4x the tuned reference's tv of 0.00425. Above this the scenario
+  # is gated: holding setpoint by hammering the valve is not a trade a plant will accept.
+  max_total_variation: 0.017
 
 budget:
   step_seconds: 0.05

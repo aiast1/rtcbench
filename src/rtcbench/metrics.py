@@ -36,6 +36,15 @@ class Cost:
     total: float
     """``w_e * iae + w_u * tv``. Lower is better. Not the score — see :mod:`rtcbench.score`."""
 
+    duty_exceeded: bool = False
+    """True if actuator travel exceeded the task's published duty limit.
+
+    Kept distinct from ``violations`` on purpose. Both gate the scenario, but a safety-
+    envelope breach and an actuator worn out by chattering are different failures, and a
+    scoring record that conflates them cannot tell you which one happened.
+
+    Defaulted, and last, so that records written before duty limits existed still load."""
+
 
 def integral_absolute_error(
     y: NDArray[np.float64],
@@ -81,9 +90,10 @@ def scenario_cost(
     dt: float,
     *,
     w_error: float = 1.0,
-    w_effort: float = 0.1,
+    w_effort: float = 0.5,
     violations: int = 0,
     overruns: int = 0,
+    max_total_variation: float | None = None,
 ) -> Cost:
     iae = integral_absolute_error(y, r, controlled, y_spans, dt)
     tv = total_variation(u, u_spans, dt)
@@ -92,6 +102,7 @@ def scenario_cost(
         tv=tv,
         violations=violations,
         overruns=overruns,
+        duty_exceeded=max_total_variation is not None and tv > max_total_variation,
         total=w_error * iae + w_effort * tv,
     )
 

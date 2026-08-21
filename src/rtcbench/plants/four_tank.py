@@ -239,3 +239,23 @@ class FourTank:
             y=self._x[:2].copy(),
             quality=np.ones(2, dtype=bool),
         )
+
+
+# -- registry hooks -------------------------------------------------------------
+
+PLANT_ID = "four_tank"
+
+#: Johansson's two published operating points, selectable from a task file.
+PRESETS = {"P_minus": P_MINUS, "P_plus": P_PLUS}
+
+
+def build(cfg):
+    """Construct a FourTank from a task file's ``plant:`` block."""
+    kwargs = dict(cfg)
+    preset = kwargs.pop("preset", "P_minus")
+    if preset not in PRESETS:
+        raise ValueError(f"four_tank preset must be one of {sorted(PRESETS)}, got {preset!r}")
+    params = PRESETS[preset]
+    if overrides := kwargs.pop("params", None):
+        params = FourTankParams(**{**params.__dict__, **overrides})
+    return FourTank(params, **kwargs)

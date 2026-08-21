@@ -188,3 +188,84 @@ def write_trends(records: Sequence[RunRecord], out_dir, limit: int = 3) -> list[
         path.write_text(trend_svg(rec), encoding="utf-8")
         written.append(str(path))
     return written
+
+
+# -- comparison view ------------------------------------------------------------
+
+_SERIES = ("#2563eb", "#dc2626", "#059669", "#f59e0b", "#7c3aed", "#0891b2", "#be185d")
+"""Categorical palette for overlaying submissions. Distinguishable in both themes and
+without relying on hue alone at the ends of the range."""
+
+
+def overlay_svg(
+    records: "dict[str, RunRecord]",
+    *,
+    title: str | None = None,
+) -> str:
+    """Overlay several submissions on the same plant draw.
+
+    A leaderboard orders controllers; it does not show you *how* they differ. Two designs
+    can land a hundredth apart on aggregate cost while one settles cleanly and the other
+    rings for two minutes, and that distinction is the whole content of a control review.
+    Same scenario, same axes, one colour each.
+
+    Every record must come from the same task and seed — comparing across draws would be
+    comparing different plants.
+    """
+    if not records:
+        return f'<svg xmlns="http://www.w3.org/2000/svg" width="{_W}" height="60"></svg>'
+
+    names = list(records)
+    first = records[names[0]]
+    seeds = {r.seed for r in records.values()}
+    if len(seeds) != 1:
+        raise ValueError(f"overlay needs one shared seed, got {sorted(seeds)}")
+
+    n_ctrl = len(first.controlled)
+    n_act = first.trace.u_commanded.shape[1]
+    height = (n_ctrl + n_act) * _PANEL_H + 52
+    parts = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{_W}" height="{height}" '
+        f'viewBox="0 0 {_W} {height}">',
+        f"<style>{_STYLE}</style>",
+        f'<rect width="{_W}" height="{height}" fill="var(--bg)"/>',
+        f'<text class="ti" x="{_PAD_L}" y="18">'
+        f"{_esc(title or f'{first.task_id} seed={first.seed} - submissions compared')}</text>",
+    ]
+
+    legend = []
+    for i, name in enumerate(names):
+        legend.append(
+            f'<tspan fill="{_SERIES[i % len(_SERIES)]}">--- {_esc(name)}</tspan>  '
+        )
+    parts.append(f'<text class="lg" x="{_PAD_L}" y="36">{"".join(legend)}</text>')
+
+    y0 = 44
+    for slot, ch in enumerate(first.controlled):
+        series = [r.trace.y[:, ch] for r in records.values()]
+        sp = first.trace.r[:, ch]
+        pool = np.concatenate([s[np.isfinite(s)] for s in series] + [sp[np.isfinite(sp)]])
+        p = _Panel(y0, first.trace.t, float(pool.min()), float(pool.max()))
+        tag = first.measurement_tags[ch] if ch < len(first.measurement_tags) else f"y{ch}"
+        parts.append(p.frame(f"{tag}   PV (SP dashed grey)", ""))
+        parts.append(p.line(sp, "var(--muted)", dash="5 3"))
+        for i, s in enumerate(series):
+            parts.append(p.line(s, _SERIES[i % len(_SERIES)]))
+        y0 += _PANEL_H
+
+    for j in range(n_act):
+        series = [r.trace.u_commanded[:, j] for r in records.values()]
+        pool = np.concatenate(series)
+        p = _Panel(y0, first.trace.t, float(pool.min()), float(pool.max()))
+        tag = first.actuator_tags[j] if j < len(first.actuator_tags) else f"u{j}"
+        parts.append(p.frame(f"{tag}   OP", ""))
+        for i, s in enumerate(series):
+            parts.append(p.line(s, _SERIES[i % len(_SERIES)]))
+        y0 += _PANEL_H
+
+    parts.append(
+        f'<text class="ax" x="{_W - _PAD_R}" y="{height - 8}" text-anchor="end">'
+        f"time (s) -> {first.trace.t[-1]:.0f}</text>"
+    )
+    parts.append("</svg>")
+    return "".join(parts)

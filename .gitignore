@@ -12,3 +12,9 @@ venv/
 # Run artifacts. Leaderboard results are committed deliberately, under leaderboard/.
 out/
 runs/
+
+# Generated experiment artifacts: model submissions and commissioning logs. The tooling that
+# produces them is tracked; the outputs are reproducible from it and would otherwise bloat
+# history with every rerun. Curated leaderboard results belong in leaderboard/.
+experiments/agents/
+experiments/submissions/

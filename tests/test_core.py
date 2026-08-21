@@ -250,6 +250,35 @@ def test_a_controller_that_raises_fails_its_run_rather_than_vanishing(task: Task
     assert rec.cost.violations > 0  # gated, not silently dropped from the ensemble
 
 
+def test_a_controller_that_throws_in_init_is_recorded_not_raised(task: Task):
+    """A submission that misreads the interface must score zero, not abort the ensemble.
+
+    Found when a model wrote `brief['control_period']` against a dataclass: the constructor
+    raised, the exception escaped run_scenario, and one bad submission destroyed every other
+    scenario's result in the same run.
+    """
+
+    class BadInterface:
+        def __init__(self, brief):
+            raise TypeError("'TaskBrief' object is not subscriptable")
+
+    rec = run_scenario(task, BadInterface, task.seeds[0])
+    assert rec.failed
+    assert rec.cost.violations > 0          # gated like any other failure
+    assert rec.meta["steps"] == 0
+    assert "not subscriptable" in rec.failure
+
+
+def test_one_broken_submission_does_not_abort_the_ensemble(task: Task):
+    class BadInterface:
+        def __init__(self, brief):
+            raise KeyError("control_period")
+
+    records = run_ensemble(task, BadInterface, seeds=task.seeds[:3])
+    assert len(records) == 3               # every seed still produced a record
+    assert all(r.failed for r in records)
+
+
 def test_a_controller_returning_the_wrong_shape_fails_clearly(task: Task):
     class WrongShape:
         def __init__(self, brief):

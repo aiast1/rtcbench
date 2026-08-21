@@ -196,6 +196,7 @@ def cmd_replay(args: argparse.Namespace) -> int:
     recomputed = scenario_cost(
         tr.y, tr.r, tr.u_commanded, rec.controlled, y_spans, u_spans, rec.sample_time,
         w_error=task.scoring.w_error, w_effort=task.scoring.w_effort,
+        max_total_variation=task.scoring.max_total_variation,
         violations=int(tr.violations.sum()) + (1 if rec.failed else 0),
         overruns=int(tr.overrun.sum()),
     )

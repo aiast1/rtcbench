@@ -46,12 +46,25 @@ def run_scenario(
     obs = plant.reset(seed)
     brief = task.brief(plant)
 
-    controller = factory(brief)
-    controller.reset()
-
     n = task.n_steps
     n_y, n_u = plant.spec.n_y, plant.spec.n_u
     nx = len(plant.spec.state_names)
+
+    # A controller that throws while being CONSTRUCTED is a failed submission in exactly
+    # the way one that throws on its first step is, and must be recorded the same way.
+    # Letting it propagate aborts the whole ensemble and takes every other scenario's
+    # result with it -- so one submission misreading the interface would destroy the run
+    # rather than score zero. Found when a model wrote brief['control_period'] against a
+    # dataclass.
+    try:
+        controller = factory(brief)
+        controller.reset()
+    except Exception:
+        plant.close()
+        return _construction_failure(
+            task, seed, controller_id, plant.spec, n_y, n_u, nx,
+            "controller construction failed: " + traceback.format_exc(limit=6),
+        )
 
     t_log = np.zeros(n)
     y_log = np.zeros((n, n_y))
@@ -136,6 +149,7 @@ def run_scenario(
             trace.y, trace.r, trace.u_commanded, task.controlled, y_spans, u_spans,
             task.sample_time,
             w_error=task.scoring.w_error, w_effort=task.scoring.w_effort,
+            max_total_variation=task.scoring.max_total_variation,
             # A run that ended early failed; it is gated like a violation so it cannot
             # score well by virtue of having stopped before things got bad.
             violations=int(v_log[sl].sum()) + (1 if failed else 0),
@@ -150,6 +164,28 @@ def run_scenario(
         actuator_tags=tuple(c.tag for c in plant.spec.actuators),
         cost=cost, trace=trace, failed=failed, failure=failure,
         meta={"steps": steps_done, "planned_steps": n},
+    )
+
+
+def _construction_failure(
+    task: Task, seed: int, controller_id: str, spec, n_y: int, n_u: int, nx: int, why: str
+) -> RunRecord:
+    """A zero-length, gated record for a submission that never got as far as running."""
+    empty = Trace(
+        t=np.zeros(0), y=np.zeros((0, n_y)), r=np.zeros((0, n_y)),
+        u_commanded=np.zeros((0, n_u)), u_actual=np.zeros((0, n_u)),
+        x=np.zeros((0, nx)), quality=np.zeros((0, n_y), dtype=bool),
+        violations=np.zeros(0, dtype=bool), overrun=np.zeros(0, dtype=bool),
+    )
+    return RunRecord(
+        task_id=task.task_id, task_hash=task.content_hash, tier=task.tier, seed=seed,
+        controller_id=controller_id, plant_id=spec.plant_id, sample_time=task.sample_time,
+        controlled=task.controlled,
+        measurement_tags=tuple(c.tag for c in spec.measurements),
+        actuator_tags=tuple(c.tag for c in spec.actuators),
+        cost=Cost(iae=np.inf, tv=np.inf, violations=1, overruns=0, total=np.inf),
+        trace=empty, failed=True, failure=why,
+        meta={"steps": 0, "planned_steps": task.n_steps},
     )
 
 

@@ -81,7 +81,10 @@ def score_scenario(
     hold: float,
     reference: float,
 ) -> ScenarioScore:
-    if submission.violations > 0:
+    if submission.violations > 0 or submission.duty_exceeded:
+        # Chattering a valve to hold setpoint is not a clever trade against tracking error,
+        # it is a controller a plant will reject on actuator wear. A weight lets it be
+        # bought off; a gate does not.
         return ScenarioScore(seed=seed, score=SAFETY_GATE_SCORE, gated=True, cost=submission)
     return ScenarioScore(
         seed=seed,
