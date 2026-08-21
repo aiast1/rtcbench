@@ -1,0 +1,134 @@
+# shell_fractionator_v1 -- Prett & Morari's Shell Standard Control Problem, mismatch tier
+#
+# The classic constrained, heavily-interacting, deadtime-ridden 3x3: top draw / side draw /
+# bottoms reflux duty against top and side end-point composition and bottoms reflux
+# temperature. Every one of the nine process elements and six disturbance elements carries
+# its own gain, time constant and dead time (14-32 minutes); see
+# src/rtcbench/plants/shell_fractionator.py for the full citation and the numeric
+# cross-check (determinant and RGA) against the published identification.
+#
+# All six signals are deviation variables around the plant's commissioned trim, so u=0/y=0
+# is always the (safe, on-spec) starting point -- see the mismatch-sizing note below.
+#
+# IMMUTABLE ONCE PUBLISHED. Changing any value here changes what every historical score
+# means. Cut shell_fractionator_v2 instead.
+
+task_id: shell_fractionator_v1
+tier: mismatch
+
+description: >
+  A three-product side-draw fractionator. FCV-201 (top draw) and FCV-202 (side draw) set the
+  two product flows; FCV-203 (bottoms reflux duty) is the third manipulated variable, used to
+  manage the bottoms reflux temperature rather than to meet a product spec of its own -- there
+  is no composition target on the bottoms draw, only a hard floor on its temperature. AI-101
+  and AI-102 are the top and side end-point composition analyzers; TI-103 is the bottoms
+  reflux temperature. Two upstream circulating-loop heat duties this loop does not own
+  (d1, d2) enter all three outputs as measured disturbances. Every input-output pair, and
+  every disturbance-output pair, has its own independent gain, lag and dead time.
+
+plant:
+  kind: shell_fractionator
+  sample_time: 1.0
+  substeps: 10
+  # Relative log-normal spread applied per scenario; the controller is told the NOMINAL
+  # matrix (mismatch tier) and runs against a draw from this.
+  #
+  # Gain terms (k*): half of Prett & Morari's own published gain-uncertainty range (Araromi &
+  # Sulayman 2015, Table 2), taken as an approximate 2-sigma bound rather than the full
+  # interval verbatim -- see AUTHORING_PLANTS.md's warning against importing an external
+  # uncertainty figure without checking what it does to the ensemble. That check does not
+  # bite the usual way here, though: this model's initial condition is always the origin
+  # (u=0, d=0 -> y=0) regardless of the draw, since dead time and lag never move a linear
+  # deviation model's trim point. What the draw actually stresses is the *reference
+  # controller's* margin against the y3 floor once setpoints and the disturbance move the
+  # plant off that trim -- checked below by `rtcbench validate` and by
+  # test_shell_fractionator.py's constraint tests, not by an initial-condition argument.
+  #
+  # Delay terms (l*): a flat 8% relative spread. This is not part of Prett & Morari's
+  # published table (which gives gain ranges, not delay ranges) -- it is this task's own
+  # addition, sized to be a real but modest stress on top of the published gain uncertainty,
+  # since a deadtime-dominated problem without any delay mismatch would be testing less than
+  # its own headline pathology. l33 (the one zero-delay element) is included for uniformity;
+  # a log-normal draw on a base value of 0 stays exactly 0.
+  mismatch:
+    k11: 0.26
+    k12: 0.11
+    k13: 0.05
+    k21: 0.31
+    k22: 0.05
+    k23: 0.06
+    k31: 0.36
+    k32: 0.08
+    k33: 0.09
+    l11: 0.08
+    l12: 0.08
+    l13: 0.08
+    l21: 0.08
+    l22: 0.08
+    l23: 0.08
+    l31: 0.08
+    l32: 0.08
+    l33: 0.08
+
+horizon: 850.0
+controlled: [0, 1, 2]
+
+# A step, then a ramp, then a return: exercises setpoint tracking under interaction on the
+# way out and on the way back, plus a slow ramp where the loops' large integral times have
+# room to wind up before the process (with its own 14-32 minute dead times) catches on.
+setpoints:
+  - { t: 0,   values: [0.00, 0.00, 0.00] }
+  - { t: 120, values: [0.20, -0.15, 0.00] }
+  - { t: 350, values: [-0.10, 0.10, 0.05], ramp: 90 }
+  - { t: 600, values: [0.00, 0.00, 0.00] }
+
+# d1 (upper reflux duty) steps mid-run, after the loops have had time to settle from the
+# t=600 setpoint return: an upstream circulating loop this plant does not own bumps its heat
+# duty, arriving through this plant's own dead time and lag like any other signal here.
+disturbances:
+  - { t: 700, params: { d1: 0.15 } }
+
+instruments:
+  sensors:
+    noise_std: 0.005        # dev units, composition/temperature analyzer noise
+    deadtime_samples: 1     # one minute of analyzer cycle lag
+    quantization: 0.002
+    dropout_prob: 0.001
+  actuators:
+    # Published rate bound: |delta u_i| < 0.05 per sample (Araromi & Sulayman 2015,
+    # constraint (b)), reused directly here since the task's sample time (1 min) matches the
+    # published minimum ("sampling time > 1 min").
+    rate_limit: 0.05
+    deadband: 0.005
+
+scoring:
+  w_error: 1.0
+  w_effort: 0.5
+  cvar_alpha: 0.10
+  # ~4x the tuned reference's tv -- see the reference block below for the tuning run this
+  # was read from.
+  max_total_variation: 0.0112   # ~4x the tuned reference's tv
+
+budget:
+  step_seconds: 0.05
+  max_overruns: 20
+
+# Provenance: experiments/tune_reference.py, coordinate descent over (kp, ti, beta)
+# per loop. Best mean cost 0.043253 with zero gated scenarios.
+# Flatness: +C:/Program Files/Git/-25% on kp costs 1.7% to 3.0% -- a broad basin, not a fit to the seeds.
+# Tuned on ALL 20 scenario seeds, not the usual 6. Tuning on 6 left one of the remaining 14
+# gated -- with three interacting loops and per-element deadtimes, a gain set that is safe on
+# a sample is not necessarily safe on the ensemble. All three loops want ti=2000s: every
+# element of this transfer-function matrix carries its own delay, so integral action has to be
+# slower than the slowest of them.
+# The reference defines 1.0 on this task, so an under-tuned one inflates every score
+# here forever. If a naive PI beats it, the reference is wrong, not the naive PI.
+reference:
+  kind: pid
+  pairing: [0, 1, 2]
+  kp: [0.2, 0.4, 0.8]
+  ti: [2000.0, 2000.0, 2000.0]
+  beta: [1.0, 1.0, 1.0]
+
+scenarios:
+  seeds: [11, 23, 37, 41, 59, 67, 73, 89, 97, 103, 127, 149, 163, 179, 191, 211, 227, 239, 251, 269]
