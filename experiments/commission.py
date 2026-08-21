@@ -271,19 +271,29 @@ def _client(region: str):
 def _converse(client, model_id: str, messages, cap: int, attempts: int = 4):
     """Call Converse, discovering the model's real output cap if ours is too high."""
     delay = 4.0
+    use_temperature = True
     for attempt in range(attempts):
+        cfg = {"maxTokens": cap}
+        if use_temperature:
+            cfg["temperature"] = 0.2
         try:
             return client.converse(
                 modelId=model_id,
                 messages=messages,
                 system=[{"text": SYSTEM}],
-                inferenceConfig={"maxTokens": cap, "temperature": 0.2},
+                inferenceConfig=cfg,
             ), cap
         except Exception as exc:
             text = str(exc)
             if found := _TOKEN_LIMIT.search(text):
                 # The model told us its ceiling; take it and retry rather than losing the run.
                 cap = int(found.group(1))
+                continue
+            if "temperature" in text and use_temperature:
+                # Reasoning models reject temperature outright ("deprecated for this
+                # model"). Drop it and retry: an unsupported sampling knob should not cost
+                # us the model. This silently lost Sonnet 5 and Fable 5 from a whole run.
+                use_temperature = False
                 continue
             name = type(exc).__name__
             retriable = any(k in name for k in ("Throttl", "Timeout", "ServiceUnavailable"))

@@ -28,6 +28,22 @@ from .metrics import Cost, cvar
 SAFETY_GATE_SCORE = 0.0
 """What a scenario scores if any hard constraint was violated. A gate, not a penalty."""
 
+SCORE_FLOOR = -1.0
+"""Worst score a single scenario can contribute.
+
+The anchored scale is unbounded below, and that turned out to be a real defect. A task's
+denominator is its anchor gap, which varies hugely across the suite: on four_tank it is
+~0.10, on van_de_vusse ~0.013. A submission that cost 0.25 on van_de_vusse therefore scored
+-15.6, and two models scored around -32 there -- numbers that then dominated their suite
+means and effectively made one task the whole benchmark.
+
+Flooring fixes the aggregation without losing information that matters. "Worse than doing
+nothing" is one failure category; ranking degrees of catastrophe inside it is not
+meaningful, because how far below hold you land depends mostly on how narrow that task's
+anchors happen to be. -1.0 reads as "as far below the hold anchor as the reference is above
+it, or worse". The raw cost stays in the record for anyone who wants the unclamped number.
+"""
+
 _DEGENERATE_EPS = 1e-12
 
 
@@ -88,7 +104,7 @@ def score_scenario(
         return ScenarioScore(seed=seed, score=SAFETY_GATE_SCORE, gated=True, cost=submission)
     return ScenarioScore(
         seed=seed,
-        score=anchored_score(submission.total, hold, reference),
+        score=max(SCORE_FLOOR, anchored_score(submission.total, hold, reference)),
         gated=False,
         cost=submission,
     )
