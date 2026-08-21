@@ -1,0 +1,105 @@
+# four_tank_nmp_v1 — NON-minimum-phase quadruple tank, mismatch tier
+#
+# The same rig as four_tank_v1 with the splitter valves moved: gamma1 + gamma2 = 0.77 < 1,
+# which puts a transmission zero in the right half plane. Two consequences make this the
+# task that actually separates the field:
+#
+#   1. The DIAGONAL PAIRING IS WRONG. Most of the flow from each pump now reaches the
+#      *opposite* lower tank via the upper tanks, so pump 1 should be paired with tank 2 and
+#      pump 2 with tank 1. A controller that assumes the obvious pairing -- as every naive
+#      submission does -- fights itself.
+#   2. The RHP zero imposes a hard bandwidth ceiling. Tuning harder past it is not a
+#      trade-off, it is instability. There is no way to win this by cranking gains.
+#
+# Everything else is deliberately identical to four_tank_v1 so the two form a matched pair:
+# any score difference is attributable to the zero location, not to a changed test.
+#
+# IMMUTABLE ONCE PUBLISHED. Cut a v2 rather than editing.
+
+task_id: four_tank_nmp_v1
+tier: mismatch
+
+description: >
+  Two pumps feed four interconnected tanks. Each pump splits its flow between one lower tank
+  and the diagonally opposite upper tank, which drains into the other lower tank. On this
+  unit the splitter valves are set so that MOST of each pump's flow goes to the upper tank
+  rather than direct to the lower one. Only the two lower tank levels are instrumented; all
+  four tanks overflow at 20 cm, including the two you cannot measure. Outflow is by gravity
+  through a fixed orifice, so loop gain falls as level falls.
+
+plant:
+  kind: four_tank
+  preset: P_plus            # gamma1=0.43, gamma2=0.34 -> gamma1+gamma2 = 0.77 < 1
+  sample_time: 2.0
+  substeps: 20
+  nominal_v: [3.0, 3.0]
+  h_max: 20.0
+  h_min: 0.0
+  mismatch:
+    a1: 0.03
+    a2: 0.03
+    a3: 0.03
+    a4: 0.03
+    k1: 0.025
+    k2: 0.025
+    gamma1: 0.02
+    gamma2: 0.02
+
+horizon: 1200.0
+controlled: [0, 1]
+
+# Steady state at the nominal duty point is h1 = 11.28 cm, h2 = 11.94 cm (solved from the
+# published P+ parameters, not copied from the paper's rig readout).
+setpoints:
+  - { t: 0,    values: [11.28, 11.94] }
+  - { t: 200,  values: [13.00, 11.94] }
+  - { t: 500,  values: [13.00, 10.40], ramp: 60 }
+  - { t: 900,  values: [11.28, 11.94] }
+
+disturbances:
+  - { t: 700, params: { a1: 0.088 } }
+
+instruments:
+  sensors:
+    noise_std: 0.03
+    deadtime_samples: 1
+    quantization: 0.01
+    dropout_prob: 0.001
+  actuators:
+    rate_limit: 0.5
+    deadband: 0.02
+
+scoring:
+  w_error: 1.0
+  w_effort: 0.5
+  cvar_alpha: 0.10
+  max_total_variation: 0.0037   # ~4x the tuned reference's tv of 0.00091
+
+budget:
+  step_seconds: 0.05
+  max_overruns: 20
+
+# Provenance: tuned by experiments/tune_reference.py on the first 6 seeds, both pairings
+# searched independently over the same grid.
+#
+#   off-diagonal [1, 0]  ->  mean cost 0.0379   (this block)
+#   diagonal     [0, 1]  ->  mean cost 0.0994   2.6x worse, even fully tuned
+#
+# That gap is the task. The diagonal search also collapsed loop 1 to kp=0.05 with ti=200 --
+# it gave up on that loop entirely rather than fight the interaction, which is the classic
+# signature of a wrong pairing and exactly what a naive submission will do here.
+#
+# Note the gains: kp=0.4 with ti=120 is heavily detuned next to four_tank_v1's kp=1.8/ti=20,
+# and the resulting cost is ~10x higher. That is not a weak reference. The RHP zero imposes
+# a hard bandwidth ceiling, so tuning past it is instability rather than a trade-off, and no
+# submission should be able to beat this by very much. Cost basin is flat to within 1% at
+# +/-25% on kp.
+reference:
+  kind: pid
+  pairing: [1, 0]
+  kp: [0.4, 0.4]
+  ti: [120.0, 120.0]
+  beta: [1.0, 1.0]
+
+scenarios:
+  seeds: [11, 23, 37, 41, 59, 67, 73, 89, 97, 103, 127, 149, 163, 179, 191, 211, 227, 239, 251, 269]
