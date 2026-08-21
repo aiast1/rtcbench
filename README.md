@@ -1,92 +1,100 @@
 # RTCbench
 
-**A benchmark for LLMs that commission real closed-loop control systems.**
+**A benchmark for language models that commission real closed-loop control systems.**
 
-Not a control-theory quiz. Nothing here is graded by reading an answer — a submission is a
-controller, it gets connected to a dynamic process simulation it has never seen, and it is
+Not a control-theory quiz. Nothing here is graded by reading an answer. A submission is a
+*controller*; it gets wired to a dynamic process simulation it has never seen, and it is
 judged on what the plant actually does.
 
 ```bash
 pip install -e .
+python experiments/report.py --out out/report.html      # the current results
 rtcbench score --task tasks/four_tank_v1.yaml --controller examples/pi_controller.py
 ```
 
-```
-four_tank_v1 [mismatch]  20 scenarios  hash=67a65694b68586e5
+Nine plants, 160 tests, two dependencies, no GPU. A full scoring pass runs on a laptop.
 
-  anchors   hold cost 0.10540   reference cost 0.00389
-  submission          0.00479
+---
 
-  seed        score   IAE      TV       flags
-  11         +0.993  0.00541  0.00270
-  23         +0.987  0.00451  0.00260
-  37         +0.990  0.00429  0.00262
-  ...
-  four_tank_v1: CVaR@10%=+0.986  mean=+0.991  worst=+0.985  gated=0/20
-  (0.0 = actuators held, 1.0 = reference controller, higher is better)
-```
+## The current standing
 
-No GPU. No Windows. No COM. Two dependencies. The whole run above takes about fifteen
-seconds on a laptop, and that is a design constraint, not an accident — see
-[DESIGN.md](DESIGN.md) §9.
+Fourteen models each commissioned a controller for eight plants through one identical
+harness. **[See the results](leaderboard/report.html)** — or the raw
+[matrix](leaderboard/matrix_2026-08-21.json).
+
+| | |
+|---|---|
+| Leader | **claude-fable-5**, suite **+0.572** |
+| Submissions that beat their task's reference | **3 of 112** |
+| Results worse than doing nothing | **20** |
+| Models that beat the reference on the non-minimum-phase task | **none** |
+
+That last row is the interesting one. `four_tank_nmp_v1` is the same rig as `four_tank_v1`
+with the splitter valves moved so the obvious input/output pairing becomes the wrong one.
+Comparing a model's two scores isolates that single trap: Mistral Large 3 goes **+0.920 →
+−1.000**, Sonnet 5 **+0.974 → −1.000**.
 
 ---
 
 ## What makes a score here mean something
 
-**Anchored scoring.** Every scenario is measured between two controllers you can inspect
-and re-run: `0.0` is freezing the actuators, `1.0` is the maintainers' well-tuned reference,
-published gains and all. Scores above 1.0 are the point. Because the *unit of measurement*
-is a properly tuned baseline, there is no way to look good by beating a weak one.
+**Every score is anchored between two controllers you can read and re-run.** `0.0` is
+freezing the actuators; `1.0` is the maintainers' well-tuned reference, gains published in
+the task file. Above 1.0 beats it. Because the *unit of measurement* is a properly tuned
+baseline, there is no way to look good by beating a weak one — and the reference's tuning is
+itself a regression test, because the first draft of `four_tank_v1` shipped gains that the
+naive example submission beat, which silently inflates every score on a task.
 
-The reference is held to that standard in the test suite. The first draft of
-`four_tank_v1` shipped hand-picked gains that the naive example submission beat — which
-silently inflates every score on the task — so the gains were retuned by coordinate
-descent, the provenance was written into the task file, and
-`test_the_reference_is_not_beaten_by_a_naive_pi` now fails the build if it regresses.
+**Safety is a gate, not a penalty term.** Any hard-constraint violation zeroes the scenario,
+as does exceeding the published actuator-duty limit. Real plants do not trade an overflow
+against a bit of integral error, and a controller that holds setpoint by hammering the valve
+is rejected on wear, not discounted.
 
-**Safety is a gate, not a penalty term.** Any hard-constraint violation zeroes the scenario.
-Real plants do not trade an overflow against a bit of integral error.
-
-**Ranked on the bad tail.** The headline number is CVaR@10% across the scenario ensemble,
-not the mean. Ranking on the mean rewards a controller that is excellent on most parameter
-draws and unsafe on a few — exactly the controller nobody wants commissioned.
+**Ranked on the bad tail.** The headline is CVaR@10% — the mean of a submission's worst
+scenarios — not the average. Mean-ranking rewards a controller that is excellent on most
+parameter draws and unsafe on a few, which is exactly the controller nobody wants
+commissioned.
 
 **Tasks are validated before anyone is scored on them.**
 
 ```bash
-rtcbench validate --task tasks/four_tank_v1.yaml
+rtcbench validate --task tasks/boiler_drum_v1.yaml
 ```
 
 checks that doing nothing does not already violate, that the reference is safe on every
 draw, and that the anchors are properly separated. A scenario no controller can pass is
-noise in the ensemble, and this catches it. It has already caught two real defects in this
-repo's own task file.
+noise in the ensemble. This has caught real defects in this repo's own tasks more than once.
 
 **Every run is falsifiable.** `rtcbench replay` recomputes a record's metrics from its own
-stored trace, so a published score does not have to be taken on faith, and every run can be
-rendered as a PV/SP/OP trend — the view where a controller that "wins" by chattering the
-valve is obvious in three seconds.
+stored trace, so a published score need not be taken on faith, and any run renders as a
+PV/SP/OP trend — the view where a controller that "wins" by chattering is obvious in three
+seconds.
 
 ---
 
-## The task, and why it is hard
+## The plant pack
 
-`four_tank_v1` is Johansson's quadruple-tank process. Two pumps, four tanks, each pump
-reaching each measured tank by two paths with different time constants.
+Each plant exists to defeat a *different* naive controller. One that handles all nine is not
+pattern-matching a PID recipe.
 
-- **Only the two lower tanks are measured.** The upper tanks are unmeasured and still
-  overflow at 20 cm. You must not overflow a tank you cannot see.
-- **The loop gain falls with level**, because outflow is gravity through a fixed orifice.
-- **The parameters are not the ones you are given.** On the `mismatch` tier the brief
-  publishes the *nominal* model; the plant runs a draw from a published distribution.
-- **The instruments are real**: measurement noise, a scan of transport delay,
-  quantization, dropped samples, pump slew limits, and valve stiction.
-- **The plant gets kicked.** A leak opens on tank 1 at t=700 s, after the loops have settled.
+| Plant | The trap it sets |
+|---|---|
+| `four_tank` | Johansson's quadruple tank, minimum phase — the gentle one |
+| `four_tank_nmp` | same rig, RHP transmission zero: the obvious pairing is **wrong** |
+| `column_a` | Skogestad's 41-stage column — severe ill-conditioning |
+| `ph_neutralization` | process gain varies by orders of magnitude across the range |
+| `deadtime_process` | deadtime moves with throughput; a fixed Smith predictor degrades |
+| `van_de_vusse` | steady-state gain **reverses sign** across the operating range |
+| `boiler_drum` | inverse response — level falls before it rises (shrink and swell) |
+| `unstable_cstr` | open-loop unstable: frozen actuators do not hold position |
+| `shell_fractionator` | Prett & Morari 3×3, per-element deadtimes and constraints |
 
-And one parameter — the splitter valve setting — moves a transmission zero across the
-imaginary axis, which is what the non-minimum-phase sibling task will use to make the
-diagonal pairing the *wrong* answer.
+All are pure-numpy reimplementations from published equations, cited in each module. There
+is no property database, no equation of state, no flash — every constant comes from its
+source paper, which is why the physics stays at 4–54 lines per plant.
+
+Several carry a deliberate extra trap: **a signal that is constrained but not instrumented.**
+On the four-tank you must not overflow a tank you cannot see.
 
 ---
 
@@ -102,47 +110,62 @@ class Controller:
         ...
 ```
 
-Start from [`examples/pi_controller.py`](examples/pi_controller.py), which is deliberately
-competent-but-unremarkable: it scores 0.986, just under the reference, because it never
-identifies the plant.
-
 You get measurements and their quality flags. You never get the state vector — that
 omission is what keeps this a benchmark about control rather than about reading a state.
 
+Start from [`examples/pi_controller.py`](examples/pi_controller.py), which is deliberately
+competent-but-unremarkable and says so.
+
 ```bash
-rtcbench show  --task tasks/four_tank_v1.yaml     # the operating manual you'd be handed
-rtcbench run   --task tasks/four_tank_v1.yaml --controller mine.py --out out/
-rtcbench score --task tasks/four_tank_v1.yaml --controller mine.py --trends out/
+rtcbench show  --task tasks/column_a_v1.yaml          # the operating manual you'd be handed
+rtcbench run   --task tasks/column_a_v1.yaml --controller mine.py --out out/
+rtcbench score --task tasks/column_a_v1.yaml --controller mine.py --trends out/
 ```
+
+To run a model against the suite end to end, see
+[`experiments/commission.py`](experiments/commission.py).
 
 ---
 
-## Status
+## Documentation
 
-v0.1. The harness, scoring, records, replay, trends and one validated task are working and
-tested (`pytest` — 36 tests, 8 seconds).
+| | |
+|---|---|
+| [DESIGN.md](DESIGN.md) | why the benchmark is shaped this way — read before changing architecture |
+| [ROADMAP.md](ROADMAP.md) | what is next, and what is deliberately not being built |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | how to contribute, and what gets rejected |
+| [docs/AUTHORING_PLANTS.md](docs/AUTHORING_PLANTS.md) | adding a plant — three files, plus the lessons that cost us tasks |
+| [AGENTS.md](AGENTS.md) | orientation for coding agents working in this repo |
 
-Honest about what is not built yet:
+---
+
+## Status, honestly
+
+v0.2. The harness, scoring, records, replay, trends, nine validated tasks and a full
+multi-model run all work and are tested.
+
+What is **not** built, stated plainly because a benchmark that oversells itself is worthless:
 
 - **No sandbox.** `rtcbench.submission` imports a controller with the harness's own
-  privileges. Fine for running your own controllers; not fine for accepting submissions
-  from strangers. Subprocess isolation is v0.2.
-- **One plant.** Eight more are specified in [DESIGN.md](DESIGN.md) §4, each chosen to break
-  a different naive controller.
-- **No commissioning CLI yet.** The design calls for a metered phase where an agent
-  bump-tests a training replica before submitting; today you write the controller directly.
-- **No leaderboard, no sealed test set.** The salt-derived seed machinery exists; the
-  governance around it does not.
+  privileges. Fine for your own controllers; not fine for accepting submissions from
+  strangers. This is not hypothetical — in the first trial run an agent with repository
+  access read the reference gains out of the task file and reported them as its own tuning.
+- **No independent oracle.** Plants are checked by tests written alongside them, which is
+  self-consistency, not correctness. A sign error would pass.
+- **No commissioning CLI.** The design calls for a metered phase where an agent bump-tests a
+  training replica; today `experiments/commission.py` is the working stand-in.
+- **No sealed test set and no leaderboard automation.** The salt-derived seed machinery
+  exists; the governance around it does not.
 
 ---
 
 ## License and governance
 
-MIT for code, CC-BY-4.0 intended for tasks and results. DCO sign-off, not a CLA.
+MIT for code, CC-BY-4.0 for tasks and results. DCO sign-off, not a CLA.
 
-RTCbench originated at [Acaysia](https://github.com/AcaysiaChem) and is intended to be
-governed independently. Core has **zero** Acaysia dependencies — not in `pyproject.toml`,
-not in CI, not in the tests — and it stays that way. Proprietary and GPL engines (AcaysiaRT,
+RTCbench originated at [Acaysia](https://github.com/AcaysiaChem) and is governed
+independently. Core has **zero** Acaysia dependencies — not in `pyproject.toml`, not in CI,
+not in the tests — and stays that way. Proprietary and copyleft engines (AcaysiaRT,
 DWSIM/CAPE-OPEN) plug in behind the same `Plant` protocol as everything else, out of tree,
 and cannot host scored tasks for the same reason in both cases: a stranger cannot reproduce
 them. See [DESIGN.md](DESIGN.md) §1–2 and §7.
