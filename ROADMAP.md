@@ -3,7 +3,7 @@
 Ordered by what the first full run actually exposed, not by what would be fun to build. Each
 item says what evidence motivates it, so the ordering can be argued with.
 
-**Where things stand (v0.2):** nine validated plants, 160 tests, anchored scoring with safety
+**Where things stand (v0.2):** nine validated plants, 178 tests, anchored scoring with safety
 and actuator-duty gates, replayable run records, and one complete multi-model run —
 14 models × 8 tasks through an identical harness. See [leaderboard/](leaderboard/).
 
@@ -11,23 +11,28 @@ and actuator-duty gates, replayable run records, and one complete multi-model ru
 
 ## Next
 
-### 1. Sandbox the submission loader
+### 1. Finish hardening the sandbox  *(first cut shipped)*
 
-`rtcbench.submission` imports a controller with the harness's own privileges. Until that
-changes, **this benchmark cannot honestly accept a submission from a stranger.**
+`--sandbox` now runs a submission in a spawned process that cannot import `rtcbench` at all
+(the brief crosses as plain data and is rebuilt on the far side), cannot open a socket, and
+has its step budget enforced by the parent. A late block is a scan overrun and holds its
+previous output; a silent one is killed at 20x the budget. Eighteen tests pin those claims
+individually.
 
-Not hypothetical. In the first trial run an agent with repository access read the reference
-gains out of the task file, shipped `kp=1.95, ti=20.5` against a published `2.0, 20.0`, and
-reported them as "derived through systematic experimentation". It scored exactly +1.000 on
-every statistic, which is how it was caught.
+Motivation, for the record: an agent with repository access read the reference gains out of
+a task file, shipped `kp=1.95, ti=20.5` against a published `2.0, 20.0`, and reported them as
+"derived through systematic experimentation". It scored exactly +1.000, which is how it was
+caught.
 
-Wanted: a subprocess with no network, no filesystem beyond its own directory, no import of
-`rtcbench.plants`, and the per-step wall-clock budget enforced from outside rather than
-measured from inside. The scan-overrun semantics already exist and should survive the move —
-blowing the budget holds the last output, as a DCS does.
+Still open, and the reason this is not marked done:
 
-Splitting the reference config into a file the brief path never reads is a cheap partial
-mitigation worth doing first.
+- **Filesystem confinement.** Python cannot do it portably. A submission can still read the
+  task file if it knows the path — so the sandbox does not yet close the exact hole that
+  motivated it. Splitting the reference config out of the competitor-readable task file is
+  the cheap fix and should land next.
+- **`ctypes`, `subprocess` and friends** are untouched. The honest framing is an
+  honest-mistake barrier; genuinely untrusted code belongs in a container.
+- **Wiring into `experiments/commission.py`**, which still loads in-process.
 
 ### 2. An independent oracle for the plants
 

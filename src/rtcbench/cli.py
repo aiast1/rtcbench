@@ -54,7 +54,8 @@ def cmd_show(args: argparse.Namespace) -> int:
 
 def cmd_run(args: argparse.Namespace) -> int:
     task = Task.load(args.task)
-    factory, cid = load_controller(args.controller)
+    factory, cid = load_controller(
+        args.controller, sandbox=args.sandbox, step_seconds=task.budget.step_seconds)
     seed = args.seed if args.seed is not None else task.seeds[0]
 
     rec = run_scenario(task, factory, seed, controller_id=cid)
@@ -76,7 +77,8 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 def cmd_score(args: argparse.Namespace) -> int:
     task = Task.load(args.task)
-    factory, cid = load_controller(args.controller)
+    factory, cid = load_controller(
+        args.controller, sandbox=args.sandbox, step_seconds=task.budget.step_seconds)
     hold_factory, ref_factory = _anchors(task)
 
     print(f"{task.task_id} [{task.tier}]  {len(task.seeds)} scenarios  hash={task.content_hash}")
@@ -231,6 +233,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--controller", required=True, help="builtin:pid | builtin:hold | path.py")
     p.add_argument("--seed", type=int, default=None)
     p.add_argument("--out", default=None, help="directory for the run record + trend")
+    p.add_argument("--sandbox", action="store_true",
+                   help="run the controller in a separate process that cannot "
+                        "import the plant or open a socket (see rtcbench.sandbox "
+                        "for what this does and does not guarantee)")
     p.set_defaults(func=cmd_run)
 
     p = sub.add_parser("score", help="run the full ensemble against both anchors")
@@ -239,6 +245,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out", default=None)
     p.add_argument("--trends", default=None, help="directory for SVG trend plots")
     p.add_argument("--trend-count", type=int, default=3)
+    p.add_argument("--sandbox", action="store_true",
+                   help="run the controller in a separate process that cannot "
+                        "import the plant or open a socket (see rtcbench.sandbox "
+                        "for what this does and does not guarantee)")
     p.set_defaults(func=cmd_score)
 
     p = sub.add_parser("validate", help="check a task is well-posed before scoring anyone on it")

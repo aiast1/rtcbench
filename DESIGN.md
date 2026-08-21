@@ -22,7 +22,7 @@ Every decision below follows from that sentence.
 
 ## 1. The licensing constraint (decided)
 
-RTCbench core is **MIT** and must be installable and fully reproducible by a stranger
+RTCbench core is **Apache-2.0** and must be installable and fully reproducible by a stranger
 with a laptop — no GPU, no Windows, no COM, no proprietary engine.
 
 That rules out making any closed engine the default. It also rules out linking GPL engines
@@ -30,10 +30,10 @@ into the core.
 
 | Layer | License | Ships where |
 |---|---|---|
-| `rtcbench` (protocol, harness, sandbox, metrics, scoring, CLI) | MIT | core repo |
-| `rtcbench-plants` (pure-numpy reference plants) | MIT | core repo |
-| `rtcbench-fmi` (any FMU as a plant, via FMPy) | MIT (FMPy is BSD-2) | core repo, extra |
-| `rtcbench-opcua` (hardware / soft-PLC in the loop) | MIT | core repo, extra |
+| `rtcbench` (protocol, harness, sandbox, metrics, scoring, CLI) | Apache-2.0 | core repo |
+| `rtcbench-plants` (pure-numpy reference plants) | Apache-2.0 | core repo |
+| `rtcbench-fmi` (any FMU as a plant, via FMPy) | Apache-2.0 (FMPy is BSD-2) | core repo, extra |
+| `rtcbench-opcua` (hardware / soft-PLC in the loop) | Apache-2.0 | core repo, extra |
 | `rtcbench-dwsim` (DWSIM / CAPE-OPEN) | **GPL-3.0** | **separate repo, out of tree** |
 | `rtcbench-acaysiart` (AcaysiaRT as a plant backend) | proprietary | Acaysia's own repos, never vendored here |
 
@@ -86,7 +86,7 @@ Two consequences worth stating explicitly, because they are what keeps this clea
 - **RT-hosted tasks cannot carry the scored suite.** Same reason DWSIM cannot: a stranger
   can't reproduce them. Closed engine, GPL engine and COM-bound engine all land in the
   same bucket — *extended backends* — for the same reproducibility reason, not for
-  licensing reasons. The scored suite stays on the MIT plant pack.
+  licensing reasons. The scored suite stays on the permissively-licensed plant pack.
 
 What RT is genuinely good for here: authoring and cross-checking plants. A model validated
 against independent physics oracles is a strong reference for deciding whether an open
@@ -233,7 +233,11 @@ Three rules that matter more than the formula:
   org without losing stars, issues or history, so this should move once a maintainer group
   exists and a name is settled. `NOTICE` carries the standing claim either way:
   *originated at Acaysia, governed independently.*
-- **MIT** for code, **CC-BY-4.0** for tasks and results.
+- **Apache-2.0** for code, **CC-BY-4.0** for tasks and results. Apache over MIT for its
+  explicit patent grant: process control is a patented field, and the clause is the one
+  thing a corporate contributor's counsel looks for. Note it is incompatible with GPLv2
+  specifically (GPLv3 is fine) -- which costs nothing here, because the adapter boundary
+  already keeps GPL engines out of tree.
 - **DCO sign-off, not a CLA.** CLAs deter contributors; DCO is sufficient.
 - **Written conflict-of-interest rule, published on day one:** Acaysia-affiliated
   submissions are labeled on the leaderboard, and no maintainer scores their own
@@ -250,7 +254,7 @@ affiliation a non-issue for the rest of the project's life.
 
 ```
 rtcbench/
-  README.md  LICENSE (MIT)  NOTICE
+  README.md  LICENSE (Apache-2.0)  NOTICE
   GOVERNANCE.md  CONTRIBUTING.md  CODE_OF_CONDUCT.md
   RULES.md                    # the benchmark contract: what is allowed, what is scored
   src/rtcbench/
@@ -264,7 +268,7 @@ rtcbench/
     record.py                 # run record + replay
     baselines/                # hold, tuned PID, IMC, relay autotune, MPC oracle
     cli.py
-  plants/                     # MIT reference plant pack
+  plants/                     # permissively-licensed reference plant pack
   adapters/                   # fmi/, opcua/   (dwsim lives in its own repo)
   tasks/                      # task packs: YAML + sealed-seed manifest
   leaderboard/                # committed results JSON + provenance

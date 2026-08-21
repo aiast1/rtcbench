@@ -28,6 +28,7 @@ from numpy.typing import NDArray
 from .controller import Controller, TaskBrief
 from .metrics import Cost, scenario_cost
 from .record import RunRecord, Trace
+from .sandbox import ScanOverrun
 from .score import ScenarioScore, TaskScore, score_scenario, score_task
 from .task import Task
 
@@ -92,19 +93,26 @@ def run_scenario(
         r = task.setpoint_vector(t, n_y)
 
         started = time.perf_counter()
+        enforced_overrun = False
         try:
             u = np.asarray(
                 controller.step(t, obs.y.copy(), r.copy(), obs.quality.copy()), dtype=float
             ).reshape(-1)
             if u.shape != (n_u,) or not np.all(np.isfinite(u)):
                 raise ValueError(f"controller returned {u!r}, expected {n_u} finite values")
+        except ScanOverrun:
+            # A sandboxed controller has its budget enforced from outside and says so
+            # explicitly, rather than the parent inferring it from a stopwatch. Same
+            # consequence either way -- this is a late block, not a broken one.
+            enforced_overrun = True
+            u = u_prev
         except Exception:
             failed = True
             failure = traceback.format_exc(limit=6)
             break
         elapsed = time.perf_counter() - started
 
-        if elapsed > task.budget.step_seconds:
+        if enforced_overrun or elapsed > task.budget.step_seconds:
             overruns += 1
             o_log[k] = True
             u = u_prev  # hold last output, as a DCS does on a scan overrun
@@ -131,6 +139,14 @@ def run_scenario(
         steps_done = k + 1
 
     plant.close()
+    # A sandboxed controller owns a subprocess; leaking one per scenario would exhaust the
+    # machine over a 20-seed ensemble.
+    closer = getattr(controller, "close", None)
+    if callable(closer):
+        try:
+            closer()
+        except Exception:
+            pass
 
     sl = slice(0, steps_done)
     trace = Trace(

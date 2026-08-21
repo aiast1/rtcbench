@@ -12,7 +12,7 @@ python experiments/report.py --out out/report.html      # the current results
 rtcbench score --task tasks/four_tank_v1.yaml --controller examples/pi_controller.py
 ```
 
-Nine plants, 160 tests, two dependencies, no GPU. A full scoring pass runs on a laptop.
+Nine plants, 178 tests, two dependencies, no GPU. A full scoring pass runs on a laptop.
 
 ---
 
@@ -146,10 +146,13 @@ multi-model run all work and are tested.
 
 What is **not** built, stated plainly because a benchmark that oversells itself is worthless:
 
-- **No sandbox.** `rtcbench.submission` imports a controller with the harness's own
-  privileges. Fine for your own controllers; not fine for accepting submissions from
-  strangers. This is not hypothetical — in the first trial run an agent with repository
-  access read the reference gains out of the task file and reported them as its own tuning.
+- **The sandbox is a speed bump, not a security boundary.** `--sandbox` runs a submission
+  in a separate process that cannot import the plant, cannot open a socket, and has its step
+  budget enforced from outside. It stops an ordinary submission cheating by accident or by
+  obvious intent — which is not hypothetical, since an agent with repository access has
+  already read the reference gains out of a task file and reported them as its own tuning.
+  It does not stop a determined attacker, who has `ctypes` and a hundred other doors, and it
+  does not confine the filesystem. Run genuinely untrusted code in a container.
 - **No independent oracle.** Plants are checked by tests written alongside them, which is
   self-consistency, not correctness. A sign error would pass.
 - **No commissioning CLI.** The design calls for a metered phase where an agent bump-tests a
@@ -161,7 +164,11 @@ What is **not** built, stated plainly because a benchmark that oversells itself 
 
 ## License and governance
 
-MIT for code, CC-BY-4.0 for tasks and results. DCO sign-off, not a CLA.
+**Apache-2.0** for code, **CC-BY-4.0** for tasks and results. DCO sign-off, not a CLA.
+
+Apache rather than MIT for the patent grant: process control is a patented field, and a
+corporate contributor's counsel will look for that clause and not find it in MIT. It is
+otherwise equally permissive.
 
 RTCbench originated at [Acaysia](https://github.com/AcaysiaChem) and is governed
 independently. Core has **zero** Acaysia dependencies — not in `pyproject.toml`, not in CI,

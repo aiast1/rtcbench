@@ -14,7 +14,9 @@ That adds a `Signed-off-by:` line certifying you wrote the contribution or have 
 submit it, per the [Developer Certificate of Origin](https://developercertificate.org/).
 There is no CLA — they deter contributors and a DCO is sufficient.
 
-Code is MIT; tasks, results and documentation are CC-BY-4.0.
+Code is Apache-2.0; tasks, results and documentation are CC-BY-4.0. Apache carries an
+explicit patent grant, which matters in a patented field like process control; it is
+otherwise as permissive as MIT.
 
 ## Before you open a pull request
 
