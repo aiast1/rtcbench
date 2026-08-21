@@ -1,5 +1,15 @@
 # Results
 
+**[report.html](report.html) is the readable view** of the run below — a ranked suite score
+and a model x plant heatmap. Regenerate it after any new scoring pass with:
+
+```bash
+python experiments/report.py --matrix leaderboard/matrix_<date>.json --out leaderboard/report.html
+```
+
+Read the heatmap by column rather than by row: a plant where most of the field is red is a
+plant that discriminates. That is more useful than the ranking.
+
 Each file is one scoring pass over the whole suite, kept verbatim. Never edited after the
 fact: a leaderboard you can quietly revise is not evidence.
 

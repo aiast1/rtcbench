@@ -1,0 +1,264 @@
+<title>RTCbench Suite Results</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
+<style>
+  /* Typography is IBM Plex throughout -- a family drawn for engineering documentation,
+     which is what this is. Every numeral on the page is monospaced and tabular, because
+     an instrument readout that does not align in a column is misread. */
+  .viz-root {
+    --font-display:"IBM Plex Sans Condensed", "Helvetica Neue", Arial, sans-serif;
+    --font-body:"IBM Plex Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono:"IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+    color-scheme: light;
+    --surface-1:#fcfcfb; --surface-2:#f4f3f0; --line:#e3e2de;
+    --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#8a8984;
+    --pos:#256abf; --neg:#b13f3c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1:#1a1a19; --surface-2:#232322; --line:#33322f;
+      --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8a8984;
+      --pos:#5cacff; --neg:#ff7c75;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1:#1a1a19; --surface-2:#232322; --line:#33322f;
+    --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8a8984;
+    --pos:#5cacff; --neg:#ff7c75;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--surface-1); }
+  .viz-root {
+    background:var(--surface-1); color:var(--text-primary);
+    font-family:var(--font-body);
+    padding: 44px 28px 72px; max-width: 1060px; margin: 0 auto;
+    -webkit-font-smoothing: antialiased;
+  }
+  .masthead { border-top:2px solid var(--text-primary); padding-top:14px; }
+  .eyebrow { font-family:var(--font-mono); font-size:11px; letter-spacing:0.14em;
+              text-transform:uppercase; color:var(--text-muted); margin-bottom:10px; }
+  h1 { font-family:var(--font-display); font-size: clamp(28px, 5vw, 42px);
+        margin:0 0 10px; letter-spacing:-0.01em; font-weight:700;
+        text-wrap:balance; line-height:1.05; }
+  .sub { color:var(--text-secondary); font-size:15px; margin:0 0 30px;
+          line-height:1.6; max-width:66ch; }
+  h2 { font-family:var(--font-mono); font-size:11.5px; text-transform:uppercase;
+        letter-spacing:0.14em; color:var(--text-muted); margin:46px 0 6px;
+        font-weight:500; padding-bottom:8px; border-bottom:1px solid var(--line); }
+  .note { color:var(--text-secondary); font-size:13px; margin:12px 0 20px;
+           line-height:1.6; max-width:74ch; }
+
+  /* A summary strip rather than cards: three readings divided by hairlines, the way a
+     control-room header bar carries its key figures. */
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+            border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .stat { padding:16px 20px 15px; border-left:1px solid var(--line); }
+  .stat:first-child { border-left:none; padding-left:0; }
+  .stat .n { font-family:var(--font-mono); font-size:23px; font-weight:600;
+              letter-spacing:-0.02em; font-variant-numeric:tabular-nums;
+              line-height:1.15; }
+  .stat .k { font-size:12px; color:var(--text-secondary); margin-top:6px;
+              line-height:1.45; }
+
+  .row { display:grid; grid-template-columns:26px 148px 1fr 62px; align-items:center;
+          gap:10px; padding:2px 0; }
+  .row:focus { outline:2px solid var(--text-secondary); outline-offset:2px; border-radius:4px; }
+  .rank { color:var(--text-muted); font-size:11px; text-align:right;
+           font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  .who { font-size:13px; color:var(--text-primary); white-space:nowrap;
+          overflow:hidden; text-overflow:ellipsis; font-weight:500; }
+  .track { position:relative; height:15px; }
+  .zero { position:absolute; left:50%; top:-1px; bottom:-1px; width:1px;
+           background:var(--line); }
+  .bar { position:absolute; top:2px; height:11px; }
+  .bar.pos { background:var(--pos); border-radius:0 4px 4px 0; }
+  .bar.neg { background:var(--neg); border-radius:4px 0 0 4px; }
+  .val { font-size:12.5px; text-align:right; font-family:var(--font-mono);
+          font-variant-numeric:tabular-nums; color:var(--text-secondary);
+          font-weight:500; }
+
+  .hm { border-collapse:separate; border-spacing:2px; width:100%; margin-top:6px; }
+  .hm th { font-weight:500; font-size:11px; color:var(--text-secondary);
+             font-family:var(--font-mono); letter-spacing:0.02em; }
+  /* One display declaration, not two -- an earlier draft set block then flex on the same
+     rule, which is the kind of silent cascade collision that only shows up in the render. */
+  .hm thead th span { display:flex; align-items:flex-end; height:70px; padding-left:5px;
+                       transform:rotate(-34deg); transform-origin:left bottom;
+                       white-space:nowrap; }
+  .hm th[scope="row"] { text-align:right; padding-right:10px; white-space:nowrap;
+                         font-size:12.5px; color:var(--text-primary); width:150px;
+                         font-family:var(--font-body); font-weight:500; }
+  .cell { height:27px; border-radius:2px; background:var(--c-l);
+           text-align:center; font-size:10px; font-family:var(--font-mono);
+           font-variant-numeric:tabular-nums;
+           color:var(--text-primary); position:relative; }
+  .cell.none { background:var(--surface-2); color:var(--text-muted); }
+  .cell:focus { outline:2px solid var(--text-primary); outline-offset:1px; }
+  /* The gate marker has to be readable at a glance or it is not doing its job -- at 6px
+     it was an invisible speck. */
+  .cell .gate { position:absolute; top:0; right:2px; font-size:9px; line-height:1;
+                 color:var(--text-primary); opacity:.55; }
+  .lbl { font-weight:600; }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .cell { background:var(--c-d); }
+    :root:where(:not([data-theme="light"])) .sw { background:var(--c-d); }
+  }
+  :root[data-theme="dark"] .cell { background:var(--c-d); }
+  :root[data-theme="dark"] .sw { background:var(--c-d); }
+
+  .legend { display:grid; grid-template-columns:repeat(7,26px); gap:2px;
+             margin:16px 0 0 158px; }
+  .sw { height:11px; border-radius:2px; background:var(--c-l); }
+  .swl { font-size:10px; color:var(--text-muted); text-align:center;
+          font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  .legkey { font-size:12px; color:var(--text-secondary); margin:8px 0 0 158px; }
+
+  table.tv { border-collapse:collapse; width:100%; font-size:12px; margin-top:10px; }
+  table.tv th, table.tv td { border-bottom:1px solid var(--line); padding:5px 7px;
+                              text-align:right; font-family:var(--font-mono);
+                              font-variant-numeric:tabular-nums;
+                              color:var(--text-secondary); }
+  table.tv th:first-child { text-align:left; color:var(--text-primary);
+                             font-family:var(--font-body); font-weight:500; }
+  table.tv thead th { color:var(--text-muted); font-weight:500; }
+  table.tv td.st { color:var(--text-primary); font-weight:600; }
+  details { margin-top:20px; }
+  summary { cursor:pointer; font-size:13px; color:var(--text-secondary); }
+
+  #tip { position:fixed; font-family:var(--font-body); pointer-events:none; z-index:50; opacity:0;
+          background:var(--text-primary, #0b0b0b); color:var(--surface-1, #fcfcfb);
+          padding:6px 9px; border-radius:6px; font-size:12px; line-height:1.4;
+          transition:opacity .09s; max-width:260px; }
+  footer { margin-top:48px; padding-top:16px; border-top:1px solid var(--line);
+            color:var(--text-muted); font-size:12px; line-height:1.65;
+            max-width:74ch; }
+  footer code { font-family:var(--font-mono); font-size:11.5px; }
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+</style>
+
+<div class="viz-root">
+  <div class="masthead">
+    <div class="eyebrow">RTCbench &middot; run 2026-08-21 &middot; 8 plants &middot; 20 scenarios each</div>
+    <h1>Which models can actually commission a control loop?</h1>
+  </div>
+  <p class="sub">14 models commissioned a control system for 8 dynamic
+  process plants, each through the identical harness. Every score is anchored:
+  <strong>0.0</strong> means no better than freezing the actuators,
+  <strong>1.0</strong> means matching a well-tuned reference controller. Higher is better;
+  above 1.0 beats the reference.</p>
+
+  <div class="stats">
+    <div class="stat"><div class="n">Fable 5</div>
+      <div class="k">leads the suite at +0.572</div></div>
+    <div class="stat"><div class="n">3 / 112</div>
+      <div class="k">submissions that beat their task&rsquo;s reference</div></div>
+    <div class="stat"><div class="n">20</div>
+      <div class="k">results at the floor &mdash; worse than doing nothing</div></div>
+  </div>
+
+  <h2>Suite score</h2>
+  <p class="note">Mean of each model&rsquo;s per-task CVaR@10% &mdash; the average of its
+  worst two scenarios on every task. Ranking on the bad tail rather than the mean is
+  deliberate: a controller that is excellent on most parameter draws and unsafe on a few is
+  the one nobody wants commissioned.</p>
+  <div class="row" tabindex="0" data-tip="Fable 5 &mdash; suite +0.572"><div class="rank">1</div><div class="who">Fable 5</div><div class="track"><div class="zero"></div><div class="bar pos" style="left:50.00%;width:44.64%"></div></div><div class="val pos">+0.572</div></div>
+<div class="row" tabindex="0" data-tip="Sonnet 5 &mdash; suite +0.287"><div class="rank">2</div><div class="who">Sonnet 5</div><div class="track"><div class="zero"></div><div class="bar pos" style="left:50.00%;width:22.37%"></div></div><div class="val pos">+0.287</div></div>
+<div class="row" tabindex="0" data-tip="Kimi K2 Thinking &mdash; suite +0.094"><div class="rank">3</div><div class="who">Kimi K2 Thinking</div><div class="track"><div class="zero"></div><div class="bar pos" style="left:50.00%;width:7.31%"></div></div><div class="val pos">+0.094</div></div>
+<div class="row" tabindex="0" data-tip="Gemma 3 27B &mdash; suite +0.040"><div class="rank">4</div><div class="who">Gemma 3 27B</div><div class="track"><div class="zero"></div><div class="bar pos" style="left:50.00%;width:3.11%"></div></div><div class="val pos">+0.040</div></div>
+<div class="row" tabindex="0" data-tip="GLM-5 &mdash; suite +0.011"><div class="rank">5</div><div class="who">GLM-5</div><div class="track"><div class="zero"></div><div class="bar pos" style="left:50.00%;width:0.89%"></div></div><div class="val pos">+0.011</div></div>
+<div class="row" tabindex="0" data-tip="Qwen3 Coder Next &mdash; suite -0.006"><div class="rank">6</div><div class="who">Qwen3 Coder Next</div><div class="track"><div class="zero"></div><div class="bar neg" style="left:49.53%;width:0.47%"></div></div><div class="val neg">-0.006</div></div>
+<div class="row" tabindex="0" data-tip="Mistral Large 3 &mdash; suite -0.049"><div class="rank">7</div><div class="who">Mistral Large 3</div><div class="track"><div class="zero"></div><div class="bar neg" style="left:46.21%;width:3.79%"></div></div><div class="val neg">-0.049</div></div>
+<div class="row" tabindex="0" data-tip="Haiku 4.5 &mdash; suite -0.066"><div class="rank">8</div><div class="who">Haiku 4.5</div><div class="track"><div class="zero"></div><div class="bar neg" style="left:44.88%;width:5.12%"></div></div><div class="val neg">-0.066</div></div>
+<div class="row" tabindex="0" data-tip="MiniMax M2.5 &mdash; suite -0.085"><div class="rank">9</div><div class="who">MiniMax M2.5</div><div class="track"><div class="zero"></div><div class="bar neg" style="left:43.36%;width:6.64%"></div></div><div class="val neg">-0.085</div></div>
+<div class="row" tabindex="0" data-tip="Llama 3 70B &mdash; suite -0.180"><div class="rank">10</div><div class="who">Llama 3 70B</div><div class="track"><div class="zero"></div><div class="bar neg" style="left:35.93%;width:14.07%"></div></div><div class="val neg">-0.180</div></div>
+<div class="row" tabindex="0" data-tip="DeepSeek V3.2 &mdash; suite -0.184"><div class="rank">11</div><div class="who">DeepSeek V3.2</div><div class="track"><div class="zero"></div><div class="bar neg" style="left:35.69%;width:14.31%"></div></div><div class="val neg">-0.184</div></div>
+<div class="row" tabindex="0" data-tip="Nova Pro &mdash; suite -0.313"><div class="rank">12</div><div class="who">Nova Pro</div><div class="track"><div class="zero"></div><div class="bar neg" style="left:25.58%;width:24.42%"></div></div><div class="val neg">-0.313</div></div>
+<div class="row" tabindex="0" data-tip="Nemotron Super 3 &mdash; suite -0.441"><div class="rank">13</div><div class="who">Nemotron Super 3</div><div class="track"><div class="zero"></div><div class="bar neg" style="left:15.63%;width:34.37%"></div></div><div class="val neg">-0.441</div></div>
+<div class="row" tabindex="0" data-tip="gpt-oss 120B &mdash; suite -0.500"><div class="rank">14</div><div class="who">gpt-oss 120B</div><div class="track"><div class="zero"></div><div class="bar neg" style="left:10.97%;width:39.03%"></div></div><div class="val neg">-0.500</div></div>
+
+  <h2>Where each model struggles</h2>
+  <p class="note">One cell per model per plant. Blue beats doing nothing, red is worse than
+  doing nothing, grey is indistinguishable from it. A diamond marks a task where at least
+  one scenario was gated outright &mdash; a safety-envelope breach or an actuator worn out by
+  chattering. Read the columns: a plant where most of the field is red is a plant that
+  works.</p>
+  <table class="hm">
+    <thead><tr><th></th><th scope="col" title="minimum phase; the gentle one"><span>Four-tank</span></th><th scope="col" title="RHP zero - the obvious pairing is wrong"><span>Four-tank NMP</span></th><th scope="col" title="ill-conditioned 41-stage column"><span>Column A</span></th><th scope="col" title="gain varies by orders of magnitude"><span>pH</span></th><th scope="col" title="deadtime moves with throughput"><span>Deadtime</span></th><th scope="col" title="steady-state gain reverses sign"><span>Van de Vusse</span></th><th scope="col" title="inverse response (shrink and swell)"><span>Boiler drum</span></th><th scope="col" title="open-loop unstable operating point"><span>Unstable CSTR</span></th></tr></thead>
+    <tbody>
+    <tr><th scope="row">Fable 5</th><td class="cell" tabindex="0" data-tip="Fable 5 &middot; Four-tank<br>score +0.983" style="--c-l:#256abf;--c-d:#5cacff"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Fable 5 &middot; Four-tank NMP<br>score -0.637" style="--c-l:#e4857e;--c-d:#b45d57"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Fable 5 &middot; Column A<br>score +0.598" style="--c-l:#6da7ec;--c-d:#487cbd"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Fable 5 &middot; pH<br>score +0.917" style="--c-l:#3987e5;--c-d:#5094e9"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Fable 5 &middot; Deadtime<br>score +1.123" style="--c-l:#256abf;--c-d:#5cacff"><span class="lbl">1.12</span></td><td class="cell" tabindex="0" data-tip="Fable 5 &middot; Van de Vusse<br>score +0.867" style="--c-l:#3987e5;--c-d:#5094e9"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Fable 5 &middot; Boiler drum<br>score +0.728" style="--c-l:#3987e5;--c-d:#5094e9"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Fable 5 &middot; Unstable CSTR<br>score +0.000 &middot; 3 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td></tr>
+<tr><th scope="row">Sonnet 5</th><td class="cell" tabindex="0" data-tip="Sonnet 5 &middot; Four-tank<br>score +0.974" style="--c-l:#256abf;--c-d:#5cacff"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Sonnet 5 &middot; Four-tank NMP<br>score -1.000 &middot; 4 scenario(s) gated" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Sonnet 5 &middot; Column A<br>score +1.027" style="--c-l:#256abf;--c-d:#5cacff"><span class="lbl">1.03</span></td><td class="cell" tabindex="0" data-tip="Sonnet 5 &middot; pH<br>score +0.840" style="--c-l:#3987e5;--c-d:#5094e9"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Sonnet 5 &middot; Deadtime<br>score +0.784" style="--c-l:#3987e5;--c-d:#5094e9"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Sonnet 5 &middot; Van de Vusse<br>score -1.000" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span></td><td class="cell" tabindex="0" data-tip="Sonnet 5 &middot; Boiler drum<br>score +0.771" style="--c-l:#3987e5;--c-d:#5094e9"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Sonnet 5 &middot; Unstable CSTR<br>score -0.101 &middot; 19 scenario(s) gated" style="--c-l:#fad6d2;--c-d:#68413e"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td></tr>
+<tr><th scope="row">Kimi K2 Thinking</th><td class="cell" tabindex="0" data-tip="Kimi K2 Thinking &middot; Four-tank<br>score +0.728" style="--c-l:#3987e5;--c-d:#5094e9"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Kimi K2 Thinking &middot; Four-tank NMP<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Kimi K2 Thinking &middot; Column A<br>score +0.401" style="--c-l:#9ec5f4;--c-d:#416593"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Kimi K2 Thinking &middot; pH<br>score +0.551" style="--c-l:#6da7ec;--c-d:#487cbd"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Kimi K2 Thinking &middot; Deadtime<br>score +0.069" style="--c-l:#cde2fb;--c-d:#384e6b"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Kimi K2 Thinking &middot; Van de Vusse<br>score -1.000" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span></td><td class="cell" tabindex="0" data-tip="Kimi K2 Thinking &middot; Boiler drum<br>score +0.000" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Kimi K2 Thinking &middot; Unstable CSTR<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td></tr>
+<tr><th scope="row">Gemma 3 27B</th><td class="cell" tabindex="0" data-tip="Gemma 3 27B &middot; Four-tank<br>score +0.798" style="--c-l:#3987e5;--c-d:#5094e9"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Gemma 3 27B &middot; Four-tank NMP<br>score -1.000 &middot; 12 scenario(s) gated" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Gemma 3 27B &middot; Column A<br>score +0.209" style="--c-l:#cde2fb;--c-d:#384e6b"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Gemma 3 27B &middot; pH<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Gemma 3 27B &middot; Deadtime<br>score +0.449" style="--c-l:#9ec5f4;--c-d:#416593"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Gemma 3 27B &middot; Van de Vusse<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Gemma 3 27B &middot; Boiler drum<br>score -0.000" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Gemma 3 27B &middot; Unstable CSTR<br>score -0.136" style="--c-l:#fad6d2;--c-d:#68413e"><span class="lbl"></span></td></tr>
+<tr><th scope="row">GLM-5</th><td class="cell" tabindex="0" data-tip="GLM-5 &middot; Four-tank<br>score +0.862" style="--c-l:#3987e5;--c-d:#5094e9"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="GLM-5 &middot; Four-tank NMP<br>score -1.000 &middot; 11 scenario(s) gated" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="GLM-5 &middot; Column A<br>score +0.971" style="--c-l:#256abf;--c-d:#5cacff"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="GLM-5 &middot; pH<br>score +0.257" style="--c-l:#9ec5f4;--c-d:#416593"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="GLM-5 &middot; Deadtime<br>score +0.101" style="--c-l:#cde2fb;--c-d:#384e6b"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="GLM-5 &middot; Van de Vusse<br>score -1.000" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span></td><td class="cell" tabindex="0" data-tip="GLM-5 &middot; Boiler drum<br>score +0.000 &middot; 4 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="GLM-5 &middot; Unstable CSTR<br>score -0.100 &middot; 18 scenario(s) gated" style="--c-l:#fad6d2;--c-d:#68413e"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td></tr>
+<tr><th scope="row">Qwen3 Coder Next</th><td class="cell" tabindex="0" data-tip="Qwen3 Coder Next &middot; Four-tank<br>score +0.891" style="--c-l:#3987e5;--c-d:#5094e9"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Qwen3 Coder Next &middot; Four-tank NMP<br>score -0.747 &middot; 3 scenario(s) gated" style="--c-l:#d75853;--c-d:#dd6a64"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Qwen3 Coder Next &middot; Column A<br>score -0.017" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Qwen3 Coder Next &middot; pH<br>score +0.708" style="--c-l:#3987e5;--c-d:#5094e9"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Qwen3 Coder Next &middot; Deadtime<br>score +0.086" style="--c-l:#cde2fb;--c-d:#384e6b"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Qwen3 Coder Next &middot; Van de Vusse<br>score -0.716" style="--c-l:#d75853;--c-d:#dd6a64"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Qwen3 Coder Next &middot; Boiler drum<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Qwen3 Coder Next &middot; Unstable CSTR<br>score -0.253 &middot; 15 scenario(s) gated" style="--c-l:#f1aea8;--c-d:#8d4f4a"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td></tr>
+<tr><th scope="row">Mistral Large 3</th><td class="cell" tabindex="0" data-tip="Mistral Large 3 &middot; Four-tank<br>score +0.920" style="--c-l:#3987e5;--c-d:#5094e9"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Mistral Large 3 &middot; Four-tank NMP<br>score -1.000" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span></td><td class="cell" tabindex="0" data-tip="Mistral Large 3 &middot; Column A<br>score +0.313" style="--c-l:#9ec5f4;--c-d:#416593"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Mistral Large 3 &middot; pH<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Mistral Large 3 &middot; Deadtime<br>score +0.379" style="--c-l:#9ec5f4;--c-d:#416593"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Mistral Large 3 &middot; Van de Vusse<br>score -1.000" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span></td><td class="cell" tabindex="0" data-tip="Mistral Large 3 &middot; Boiler drum<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Mistral Large 3 &middot; Unstable CSTR<br>score +0.000 &middot; 7 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td></tr>
+<tr><th scope="row">Haiku 4.5</th><td class="cell" tabindex="0" data-tip="Haiku 4.5 &middot; Four-tank<br>score +0.301" style="--c-l:#9ec5f4;--c-d:#416593"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Haiku 4.5 &middot; Four-tank NMP<br>score -0.500 &middot; 19 scenario(s) gated" style="--c-l:#e4857e;--c-d:#b45d57"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Haiku 4.5 &middot; Column A<br>score +1.034" style="--c-l:#256abf;--c-d:#5cacff"><span class="lbl">1.03</span></td><td class="cell" tabindex="0" data-tip="Haiku 4.5 &middot; pH<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Haiku 4.5 &middot; Deadtime<br>score -1.000" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span></td><td class="cell" tabindex="0" data-tip="Haiku 4.5 &middot; Van de Vusse<br>score +0.063" style="--c-l:#cde2fb;--c-d:#384e6b"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Haiku 4.5 &middot; Boiler drum<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Haiku 4.5 &middot; Unstable CSTR<br>score -0.423" style="--c-l:#f1aea8;--c-d:#8d4f4a"><span class="lbl"></span></td></tr>
+<tr><th scope="row">MiniMax M2.5</th><td class="cell" tabindex="0" data-tip="MiniMax M2.5 &middot; Four-tank<br>score +0.475" style="--c-l:#6da7ec;--c-d:#487cbd"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="MiniMax M2.5 &middot; Four-tank NMP<br>score -1.000 &middot; 7 scenario(s) gated" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="MiniMax M2.5 &middot; Column A<br>score -0.036" style="--c-l:#fad6d2;--c-d:#68413e"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="MiniMax M2.5 &middot; pH<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="MiniMax M2.5 &middot; Deadtime<br>score +0.008" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="MiniMax M2.5 &middot; Van de Vusse<br>score -1.000" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span></td><td class="cell" tabindex="0" data-tip="MiniMax M2.5 &middot; Boiler drum<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="MiniMax M2.5 &middot; Unstable CSTR<br>score +0.872" style="--c-l:#3987e5;--c-d:#5094e9"><span class="lbl"></span></td></tr>
+<tr><th scope="row">Llama 3 70B</th><td class="cell" tabindex="0" data-tip="Llama 3 70B &middot; Four-tank<br>score -0.267" style="--c-l:#f1aea8;--c-d:#8d4f4a"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Llama 3 70B &middot; Four-tank NMP<br>score -1.000" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span></td><td class="cell" tabindex="0" data-tip="Llama 3 70B &middot; Column A<br>score +0.430" style="--c-l:#9ec5f4;--c-d:#416593"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Llama 3 70B &middot; pH<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Llama 3 70B &middot; Deadtime<br>score +0.411" style="--c-l:#9ec5f4;--c-d:#416593"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Llama 3 70B &middot; Van de Vusse<br>score -1.000" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span></td><td class="cell" tabindex="0" data-tip="Llama 3 70B &middot; Boiler drum<br>score -0.017" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Llama 3 70B &middot; Unstable CSTR<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td></tr>
+<tr><th scope="row">DeepSeek V3.2</th><td class="cell" tabindex="0" data-tip="DeepSeek V3.2 &middot; Four-tank<br>score -1.000" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span></td><td class="cell" tabindex="0" data-tip="DeepSeek V3.2 &middot; Four-tank NMP<br>score -1.000" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span></td><td class="cell" tabindex="0" data-tip="DeepSeek V3.2 &middot; Column A<br>score +0.839" style="--c-l:#3987e5;--c-d:#5094e9"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="DeepSeek V3.2 &middot; pH<br>score +0.000" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="DeepSeek V3.2 &middot; Deadtime<br>score -0.010" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="DeepSeek V3.2 &middot; Van de Vusse<br>score -0.297" style="--c-l:#f1aea8;--c-d:#8d4f4a"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="DeepSeek V3.2 &middot; Boiler drum<br>score +0.000 &middot; 19 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="DeepSeek V3.2 &middot; Unstable CSTR<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td></tr>
+<tr><th scope="row">Nova Pro</th><td class="cell" tabindex="0" data-tip="Nova Pro &middot; Four-tank<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Nova Pro &middot; Four-tank NMP<br>score -1.000" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span></td><td class="cell" tabindex="0" data-tip="Nova Pro &middot; Column A<br>score -0.505 &middot; 3 scenario(s) gated" style="--c-l:#e4857e;--c-d:#b45d57"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Nova Pro &middot; pH<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Nova Pro &middot; Deadtime<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Nova Pro &middot; Van de Vusse<br>score -1.000" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span></td><td class="cell" tabindex="0" data-tip="Nova Pro &middot; Boiler drum<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Nova Pro &middot; Unstable CSTR<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td></tr>
+<tr><th scope="row">Nemotron Super 3</th><td class="cell" tabindex="0" data-tip="Nemotron Super 3 &middot; Four-tank<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Nemotron Super 3 &middot; Four-tank NMP<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Nemotron Super 3 &middot; Column A<br>score -0.861 &middot; 12 scenario(s) gated" style="--c-l:#d75853;--c-d:#dd6a64"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Nemotron Super 3 &middot; pH<br>score -0.375 &middot; 3 scenario(s) gated" style="--c-l:#f1aea8;--c-d:#8d4f4a"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Nemotron Super 3 &middot; Deadtime<br>score -0.153" style="--c-l:#fad6d2;--c-d:#68413e"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="Nemotron Super 3 &middot; Van de Vusse<br>score -1.000" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span></td><td class="cell" tabindex="0" data-tip="Nemotron Super 3 &middot; Boiler drum<br>score -1.000 &middot; 6 scenario(s) gated" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="Nemotron Super 3 &middot; Unstable CSTR<br>score -0.136" style="--c-l:#fad6d2;--c-d:#68413e"><span class="lbl"></span></td></tr>
+<tr><th scope="row">gpt-oss 120B</th><td class="cell" tabindex="0" data-tip="gpt-oss 120B &middot; Four-tank<br>score -0.610" style="--c-l:#e4857e;--c-d:#b45d57"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="gpt-oss 120B &middot; Four-tank NMP<br>score -0.939" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="gpt-oss 120B &middot; Column A<br>score -0.260 &middot; 18 scenario(s) gated" style="--c-l:#f1aea8;--c-d:#8d4f4a"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="gpt-oss 120B &middot; pH<br>score +0.000 &middot; 20 scenario(s) gated" style="--c-l:#f0efec;--c-d:#383835"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="gpt-oss 120B &middot; Deadtime<br>score +0.049" style="--c-l:#cde2fb;--c-d:#384e6b"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="gpt-oss 120B &middot; Van de Vusse<br>score -0.957" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl"></span></td><td class="cell" tabindex="0" data-tip="gpt-oss 120B &middot; Boiler drum<br>score -0.286 &middot; 18 scenario(s) gated" style="--c-l:#f1aea8;--c-d:#8d4f4a"><span class="lbl"></span> <span class="gate" aria-hidden="true">&#9670;</span></td><td class="cell" tabindex="0" data-tip="gpt-oss 120B &middot; Unstable CSTR<br>score -1.000 &middot; 8 scenario(s) gated" style="--c-l:#b13f3c;--c-d:#ff7c75"><span class="lbl">floor</span> <span class="gate" aria-hidden="true">&#9670;</span></td></tr>
+    </tbody>
+  </table>
+  <div class="legend"><div class="sw" style="--c-l:#b13f3c;--c-d:#ff7c75"></div><div class="swl">−1.0</div><div class="sw" style="--c-l:#e4857e;--c-d:#b45d57"></div><div class="swl"></div><div class="sw" style="--c-l:#fad6d2;--c-d:#68413e"></div><div class="swl"></div><div class="sw" style="--c-l:#f0efec;--c-d:#383835"></div><div class="swl">0</div><div class="sw" style="--c-l:#cde2fb;--c-d:#384e6b"></div><div class="swl"></div><div class="sw" style="--c-l:#6da7ec;--c-d:#487cbd"></div><div class="swl"></div><div class="sw" style="--c-l:#256abf;--c-d:#5cacff"></div><div class="swl">+1.1</div></div>
+  <div class="legkey">&#9670; at least one scenario gated on safety or actuator duty</div>
+
+  <details>
+    <summary>Table view &mdash; exact scores</summary>
+    <table class="tv">
+      <thead><tr><th>Model</th><th>Suite</th><th>Four-tank</th><th>Four-tank NMP</th><th>Column A</th><th>pH</th><th>Deadtime</th><th>Van de Vusse</th><th>Boiler drum</th><th>Unstable CSTR</th></tr></thead>
+      <tbody><tr><th>Fable 5</th><td class='st'>+0.572</td><td>+0.983</td><td>-0.637</td><td>+0.598</td><td>+0.917</td><td>+1.123</td><td>+0.867</td><td>+0.728</td><td>+0.000</td></tr>
+<tr><th>Sonnet 5</th><td class='st'>+0.287</td><td>+0.974</td><td>-1.000</td><td>+1.027</td><td>+0.840</td><td>+0.784</td><td>-1.000</td><td>+0.771</td><td>-0.101</td></tr>
+<tr><th>Kimi K2 Thinking</th><td class='st'>+0.094</td><td>+0.728</td><td>+0.000</td><td>+0.401</td><td>+0.551</td><td>+0.069</td><td>-1.000</td><td>+0.000</td><td>+0.000</td></tr>
+<tr><th>Gemma 3 27B</th><td class='st'>+0.040</td><td>+0.798</td><td>-1.000</td><td>+0.209</td><td>+0.000</td><td>+0.449</td><td>+0.000</td><td>-0.000</td><td>-0.136</td></tr>
+<tr><th>GLM-5</th><td class='st'>+0.011</td><td>+0.862</td><td>-1.000</td><td>+0.971</td><td>+0.257</td><td>+0.101</td><td>-1.000</td><td>+0.000</td><td>-0.100</td></tr>
+<tr><th>Qwen3 Coder Next</th><td class='st'>-0.006</td><td>+0.891</td><td>-0.747</td><td>-0.017</td><td>+0.708</td><td>+0.086</td><td>-0.716</td><td>+0.000</td><td>-0.253</td></tr>
+<tr><th>Mistral Large 3</th><td class='st'>-0.049</td><td>+0.920</td><td>-1.000</td><td>+0.313</td><td>+0.000</td><td>+0.379</td><td>-1.000</td><td>+0.000</td><td>+0.000</td></tr>
+<tr><th>Haiku 4.5</th><td class='st'>-0.066</td><td>+0.301</td><td>-0.500</td><td>+1.034</td><td>+0.000</td><td>-1.000</td><td>+0.063</td><td>+0.000</td><td>-0.423</td></tr>
+<tr><th>MiniMax M2.5</th><td class='st'>-0.085</td><td>+0.475</td><td>-1.000</td><td>-0.036</td><td>+0.000</td><td>+0.008</td><td>-1.000</td><td>+0.000</td><td>+0.872</td></tr>
+<tr><th>Llama 3 70B</th><td class='st'>-0.180</td><td>-0.267</td><td>-1.000</td><td>+0.430</td><td>+0.000</td><td>+0.411</td><td>-1.000</td><td>-0.017</td><td>+0.000</td></tr>
+<tr><th>DeepSeek V3.2</th><td class='st'>-0.184</td><td>-1.000</td><td>-1.000</td><td>+0.839</td><td>+0.000</td><td>-0.010</td><td>-0.297</td><td>+0.000</td><td>+0.000</td></tr>
+<tr><th>Nova Pro</th><td class='st'>-0.313</td><td>+0.000</td><td>-1.000</td><td>-0.505</td><td>+0.000</td><td>+0.000</td><td>-1.000</td><td>+0.000</td><td>+0.000</td></tr>
+<tr><th>Nemotron Super 3</th><td class='st'>-0.441</td><td>+0.000</td><td>+0.000</td><td>-0.861</td><td>-0.375</td><td>-0.153</td><td>-1.000</td><td>-1.000</td><td>-0.136</td></tr>
+<tr><th>gpt-oss 120B</th><td class='st'>-0.500</td><td>-0.610</td><td>-0.939</td><td>-0.260</td><td>+0.000</td><td>+0.049</td><td>-0.957</td><td>-0.286</td><td>-1.000</td></tr></tbody>
+    </table>
+  </details>
+
+  <footer>
+    Generated 2026-08-21 from <code>leaderboard/matrix_2026-08-21.json</code>.
+    Every model was given the same brief, three revision rounds, and feedback on held-out
+    scenario seeds; submissions are sealed controller files scored by the ordinary harness.
+    Two caveats recorded at the time: the Claude models ran in a later batch after a
+    parameter bug was fixed, and Opus 5 is absent rather than zero &mdash; Bedrock returned
+    an access denial for it on this account.
+  </footer>
+
+  <!-- Inside .viz-root on purpose: the tokens are scoped to it, and a tooltip parked
+       outside that scope resolves var(--surface-1) to nothing and renders unstyled. -->
+  <div id="tip" role="status"></div>
+</div>
+<script>
+(function () {
+  var tip = document.getElementById('tip');
+  function show(e) {
+    var el = e.target.closest('[data-tip]');
+    if (!el) return;
+    tip.innerHTML = el.getAttribute('data-tip');
+    tip.style.opacity = '1';
+    var r = el.getBoundingClientRect();
+    var x = Math.min(window.innerWidth - 270, Math.max(8, r.left));
+    var y = r.top > 90 ? r.top - 8 - tip.offsetHeight : r.bottom + 8;
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
+  }
+  function hide() { tip.style.opacity = '0'; }
+  document.addEventListener('mouseover', show);
+  document.addEventListener('mouseout', hide);
+  document.addEventListener('focusin', show);
+  document.addEventListener('focusout', hide);
+})();
+</script>
