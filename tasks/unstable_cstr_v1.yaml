@@ -1,0 +1,129 @@
+# unstable_cstr_v1 -- exothermic CSTR on the unstable middle branch, mismatch tier
+#
+# The pack's first open-loop-unstable task. Every other plant here can be survived by a
+# controller that does very little; this one cannot. Holding the actuators does not hold the
+# reactor, it loses it, and the zero anchor is enormous as a result. What the task actually
+# measures is whether a controller can find and keep a fixed point that the process itself
+# is trying to leave -- with the extra sting that the sign of the steady-state gain is the
+# opposite of the sign of the dynamic gain, so a controller that identifies the loop from a
+# slow test gets the direction backwards.
+#
+# IMMUTABLE ONCE PUBLISHED. Changing any value here changes what every historical score
+# means. Cut unstable_cstr_v2 instead.
+
+task_id: unstable_cstr_v1
+tier: mismatch
+
+description: >
+  A 100 L jacketed CSTR running a single irreversible exothermic reaction A -> B. Feed
+  enters at 100 L/min, 1 mol/L of A, nominally 350 K. The only handle is the coolant supply
+  temperature to the jacket, delivered by a hot/cold blending skid over 270-340 K; the skid
+  slews at 1.5 K/s and its blending valve has about 0.15 K of stiction. Instrumentation is
+  a thermowelled reactor thermocouple (TI-101) and a readback of the coolant temperature
+  the skid actually delivered (TI-102). There is no composition analyser: conversion is not
+  measured and has to be inferred from temperature or not at all.
+  The unit is operated at 350 K, which is the MIDDLE of three steady states available to it
+  at 300 K coolant -- the cold one sits near 324 K and the hot one near 370 K, and 350 K is
+  the only one that makes product on spec. That operating point is open-loop unstable: with
+  the loop in manual the reactor departs within about two minutes, and if it departs upward
+  it ignites through an excursion of roughly 100 K before burning off its inventory of A and
+  falling into the cold state. Hard trips: the vessel relieves at 470 K and product drops
+  out of solution below 300 K.
+
+plant:
+  kind: unstable_cstr
+  sample_time: 3.0
+  # 20 RK4 substeps per control period. Checked against a 200-substep reference on an
+  # igniting draw: max deviation 6.6e-4 K through a 447 K excursion, which is four orders
+  # of magnitude below anything the task scores on.
+  substeps: 20
+  nominal_tc: 300.0
+  coolant_range: [270.0, 340.0]
+  # Thermocouple range. Only used to normalize error -- readings are never clipped to it.
+  sensor_range: [280.0, 480.0]
+  T_trip_lo: 300.0
+  T_trip_hi: 470.0
+  # The commissioning offset: the unit is lined out NEAR its design point, never exactly on
+  # it. On a stable plant this is cosmetic. Here it is the seed of the divergence, and its
+  # sign is what decides whether an unattended reactor ignites or quenches.
+  commissioning_T: 0.6
+  commissioning_Ca: 0.005
+  # Relative log-normal spread applied per scenario. The controller is told the NOMINAL
+  # parameters (mismatch tier) and runs against a draw from this.
+  #
+  # Sized against the initial condition, as AUTHORING_PLANTS requires. That check is easy
+  # here and comes out clean: every draw STARTS at the commissioned point, 350 K +/- 0.6 K,
+  # which is 50 K above the low trip and 120 K below the high one. No draw begins anywhere
+  # near a constraint. What the spread actually does is move the drawn plant's own middle
+  # root a few K away from where the reactor was lined out, which sets the direction and
+  # the speed of the open-loop departure -- 8 of these 20 seeds quench directly and 12
+  # ignite first. Tf is deliberately NOT drawn: it is the disturbance target below, and a
+  # disturbance is an absolute value, so drawing it too would erase the draw at t=600.
+  mismatch:
+    k0: 0.05
+    UA: 0.04
+    Caf: 0.03
+    q: 0.03
+    dH: 0.03
+
+horizon: 900.0
+controlled: [0]
+
+# A step up, a slow ramp down, and a return. Note which way the COOLANT has to move: to hold
+# a hotter reactor this loop must run COLDER coolant, because the middle root of the ignition
+# curve descends as the jacket warms. The whole schedule lives inside a coolant band of about
+# 3 K, and the 70 K actuator range is there for rescues, not for tracking.
+setpoints:
+  - { t: 0,   values: [350.0] }
+  - { t: 240, values: [352.0] }
+  - { t: 480, values: [348.0], ramp: 90 }
+  - { t: 720, values: [350.0] }
+
+# The feed preheater trips and a 12 K cold slug arrives, with the loop already lined out.
+# Cold-side on purpose. A hot-side upset of the same size lands on top of whatever the HOLD
+# anchor is doing at t=600 -- on the draws where it is still sitting on the hot branch it
+# re-ignites it, pushing the unattended reactor past 500 K and turning the zero anchor itself
+# into a constraint violation. That is a defect in the task, not a hard task: it would gate
+# every scenario before any controller was involved. A cold slug leaves the hold anchor's
+# worst excursion where it already was (446.7 K) and still costs the reference a 6 K move on
+# the coolant to hold setpoint.
+disturbances:
+  - { t: 600, params: { Tf: 338.0 } }
+
+instruments:
+  sensors:
+    noise_std: [0.15, 0.05]   # K; reactor TC, then the coolant readback
+    deadtime_samples: 1       # one scan of thermowell + scan lag
+    quantization: 0.05        # K
+    dropout_prob: 0.001
+  actuators:
+    rate_limit: 2.5           # K/s of coolant supply slew
+    deadband: 0.15            # K of blending-valve stiction
+
+scoring:
+  w_error: 1.0
+  w_effort: 0.5
+  cvar_alpha: 0.10
+  # Actuator duty ceiling, ~4x the tuned reference's tv. Set from the tuner's own report.
+  max_total_variation: 0.01715   # ~4x the tuned reference's tv
+
+budget:
+  step_seconds: 0.05
+  max_overruns: 20
+
+# Provenance: experiments/tune_reference.py, coordinate descent over (kp, ti, beta)
+# per loop. Best mean cost 0.004456 with zero gated scenarios.
+# Flatness: +C:/Program Files/Git/-25% on kp costs 6.9% to 9.3% -- a broad basin, not a fit to the seeds.
+# This plant is open-loop unstable, so the hold anchor diverges and the anchor gap is
+# enormous. Beating 0.0 here is trivial; beating 1.0 is not.
+# The reference defines 1.0 on this task, so an under-tuned one inflates every score
+# here forever. If a naive PI beats it, the reference is wrong, not the naive PI.
+reference:
+  kind: pid
+  pairing: [0]
+  kp: [3.5]
+  ti: [70.0]
+  beta: [1.0]
+
+scenarios:
+  seeds: [11, 23, 37, 41, 59, 67, 73, 89, 97, 103, 127, 149, 163, 179, 191, 211, 227, 239, 251, 269]
