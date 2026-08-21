@@ -323,7 +323,14 @@ def commission(model_id: str, task: Task, rounds: int, feedback_seeds, out_root:
             ep.error = f"{type(exc).__name__}: {str(exc)[:180]}"
             break
 
-        reply = "".join(b.get("text", "") for b in resp["output"]["message"]["content"])
+        blocks = resp["output"]["message"]["content"]
+        reply = "".join(b.get("text", "") for b in blocks)
+        if not reply.strip():
+            # Some models put everything in a reasoningContent block and leave `text` empty.
+            # Mining it is worth doing: the code is often in there.
+            for b in blocks:
+                rc = b.get("reasoningContent") or {}
+                reply += (rc.get("reasoningText") or {}).get("text", "")
         ep.input_tokens += resp["usage"]["inputTokens"]
         ep.output_tokens += resp["usage"]["outputTokens"]
         ep.rounds_run = rnd
@@ -341,7 +348,11 @@ def commission(model_id: str, task: Task, rounds: int, feedback_seeds, out_root:
 
         if problem:
             ep.history.append(f"r{rnd}:{'trunc' if truncated else 'unusable'}")
-            messages.append({"role": "assistant", "content": [{"text": reply[-1500:]}]})
+            # An empty text block makes the NEXT request invalid, not this one -- Bedrock
+            # rejects the whole conversation and the episode dies on a malformed retry
+            # rather than on anything the model did wrong. Cost 5 of Opus 5's 10 episodes.
+            echo = reply[-1500:].strip() or "(empty response)"
+            messages.append({"role": "assistant", "content": [{"text": echo}]})
             messages.append({"role": "user", "content": [
                 {"text": problem + " Reply with ONLY the complete code block."}]})
             continue

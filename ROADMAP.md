@@ -98,6 +98,54 @@ only reference is a PI the maintainers tuned.
 
 ---
 
+## Distribution — getting this in front of people
+
+A reframe first, because it decides everything below: **RTCbench is not a heavy-compute
+benchmark.** The whole suite runs on a laptop in minutes — that is a designed property, not
+an accident. What costs money is *generating* a submission (API tokens); *verifying* one is
+a few thousand cheap simulations.
+
+That inverts the usual problem. MLPerf and SWE-bench need central evaluation because
+verification is expensive; here anyone can verify anyone. RTCbench can be self-serve in a way
+most benchmarks cannot, and the plan should exploit that rather than copying a pipeline built
+for a different cost structure.
+
+In the order worth doing them:
+
+**1. A Zenodo DOI per release.** GitHub-integrated, one webhook. It is what makes the project
+citable, and it costs an afternoon at most.
+
+**2. An HF Dataset for run records.** This solves a problem the repo already has. Run records
+carry full `(t, y, r, u)` traces and are what make a score falsifiable, but 200 episodes x 20
+seeds x 600 steps would bloat `git clone` badly. A versioned Dataset repo (parquet, with the
+built-in viewer) keeps the falsifiability promise without punishing everyone who checks out
+the code. `leaderboard/` keeps the small summary JSON.
+
+**3. An HF Space for the leaderboard.** Discoverability. It is where people look for LLM
+benchmarks, and free CPU is plenty because the Space renders published results rather than
+computing anything.
+
+**Do NOT run submissions inside a Space.** Executing arbitrary submitted Python on hosted
+infrastructure is precisely the threat model `rtcbench.sandbox` explicitly does not cover.
+Keep the Space read-only over published results.
+
+**4. A container image pinned per task-pack version.** "Reproducible on a laptop" is currently
+true and undefended — nothing stops a numpy release changing a trajectory in the twelfth
+decimal and silently re-denominating every published score. A pinned image makes the
+reproducibility claim testable instead of aspirational, and it is also the honest answer to
+the sandbox's filesystem hole.
+
+**5. Submission by pull request, scored in CI.** The piece that fits this project uniquely
+well: a PR adds `submissions/<name>/controller.py`, Actions runs the *dev* set in the sandbox
+and posts the score on the PR, a maintainer runs the sealed set. Cheap verification is what
+makes that possible at all, which is what turns the sandbox from a nicety into load-bearing
+infrastructure.
+
+A paper is the obvious eventual step. Note that PapersWithCode, the traditional channel, was
+sunset — confirm its status before planning around it.
+
+---
+
 ## Open questions
 
 - **A neutral home.** The `rtcbench` GitHub org is taken by an unrelated party, so the
