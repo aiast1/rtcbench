@@ -439,3 +439,72 @@ def _raw(task: Task) -> dict:
     import yaml
 
     return yaml.safe_load(TASK.read_text(encoding="utf-8"))
+
+
+# -- the blind pair, and where the floor lives ------------------------------------
+
+
+def _blind() -> Task:
+    return Task.load(TASK.parent / "four_tank_blind_v1.yaml")
+
+
+def test_the_blind_tier_withholds_the_model(task: Task):
+    blind = _blind()
+    plant = blind.build_plant()
+    plant.reset(blind.seeds[0])
+    assert blind.brief(plant).model_hint == {}, "a blind brief must carry no model"
+    # ...while its mismatch twin publishes the nominal, so the pair differ in exactly this.
+    mplant = task.build_plant()
+    mplant.reset(task.seeds[0])
+    assert task.brief(mplant).model_hint != {}
+
+
+def test_the_blind_pair_shares_its_anchors_exactly(task: Task):
+    """The whole point of the pair is that only the INFORMATION differs.
+
+    If the anchors moved, a score difference between four_tank_v1 and four_tank_blind_v1
+    would confound 'the model was withheld' with 'the task changed', and the comparison
+    would be worthless.
+    """
+    blind = _blind()
+    seeds = task.seeds[:4]
+    for build in (lambda b: Hold(b), lambda b: build_reference(b, task.reference)):
+        a = run_ensemble(task, build, seeds=seeds)
+        b = run_ensemble(blind, build, seeds=seeds)
+        for x, y in zip(a, b):
+            assert x.cost.total == pytest.approx(y.cost.total, rel=1e-12), (
+                f"seed {x.seed}: anchors differ between the mismatch and blind twins"
+            )
+
+
+def test_the_blind_description_does_not_leak_the_model():
+    """A blind brief that names the parameters in prose is not blind."""
+    blind = _blind()
+    plant = blind.build_plant()
+    text = blind.brief(plant).description.lower()
+    for leak in ("gamma", "0.071", "0.057", "3.33", "3.35", "cross-section", "a1", "k1"):
+        assert leak not in text, f"the blind description leaks {leak!r}"
+
+
+def test_a_scenario_keeps_its_spread_but_a_task_is_clipped_into_the_suite():
+    """The floor belongs in the aggregation, not in the measurement.
+
+    An earlier version clipped every scenario at -1.0. That bounded the suite mean, which was
+    the real problem, but it also flattened four_tank_nmp's whole field -- which genuinely
+    spread from -0.59 to -6.80 -- into a column of identical -1.000s that ranked nothing.
+    """
+    from rtcbench.score import SCENARIO_FLOOR, TASK_FLOOR, suite_score
+
+    assert SCENARIO_FLOOR < TASK_FLOOR, "a scenario must be free to spread further than a task"
+
+    catastrophic = Cost(iae=9.0, tv=0.0, violations=0, overruns=0, total=9.0)
+    s = score_scenario(seed=1, submission=catastrophic, hold=0.10, reference=0.02)
+    assert s.score < -50 or s.score == pytest.approx(SCENARIO_FLOOR), (
+        "a scenario score should keep its magnitude down to the sanity clamp"
+    )
+
+    # One disastrous task cannot drag the suite below its own floor divided by task count.
+    assert suite_score([1.0, -6.8, 1.0]) == pytest.approx((1.0 - 1.0 + 1.0) / 3)
+    assert suite_score([-6.8]) == pytest.approx(TASK_FLOOR)
+    # ...and a merely-bad task is NOT clipped, so ordering survives above the floor.
+    assert suite_score([0.0, -0.5]) == pytest.approx(-0.25)

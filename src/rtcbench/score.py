@@ -28,21 +28,34 @@ from .metrics import Cost, cvar
 SAFETY_GATE_SCORE = 0.0
 """What a scenario scores if any hard constraint was violated. A gate, not a penalty."""
 
-SCORE_FLOOR = -1.0
-"""Worst score a single scenario can contribute.
+SCENARIO_FLOOR = -10.0
+"""Sanity clamp on a single scenario, NOT a ranking device.
 
-The anchored scale is unbounded below, and that turned out to be a real defect. A task's
-denominator is its anchor gap, which varies hugely across the suite: on four_tank it is
-~0.10, on van_de_vusse ~0.013. A submission that cost 0.25 on van_de_vusse therefore scored
--15.6, and two models scored around -32 there -- numbers that then dominated their suite
-means and effectively made one task the whole benchmark.
-
-Flooring fixes the aggregation without losing information that matters. "Worse than doing
-nothing" is one failure category; ranking degrees of catastrophe inside it is not
-meaningful, because how far below hold you land depends mostly on how narrow that task's
-anchors happen to be. -1.0 reads as "as far below the hold anchor as the reference is above
-it, or worse". The raw cost stays in the record for anyone who wants the unclamped number.
+Its only job is to stop one pathological cost — a controller that diverges, on a task whose
+anchor gap happens to be narrow — from producing something like -1e4 and swamping an
+otherwise informative mean. Set far enough out that ordinary failures keep their spread.
 """
+
+TASK_FLOOR = -1.0
+"""How far below zero a single TASK may drag a model's SUITE score.
+
+This constant exists because the first version put the floor in the wrong place. Per-scenario
+flooring at -1.0 did fix the real problem — a task's denominator is its anchor gap, which
+ranges from ~0.10 on four_tank to ~0.013 on van_de_vusse, so an identical failure scored 8x
+worse on the narrow-anchor task and one task was dominating every suite mean — but it paid
+for that by destroying the per-task ranking as well.
+
+Measured on the first full run: unfloored, the field's four_tank_nmp scores spread from
+-0.59 to -6.80, a tenfold difference in how badly each model failed. Floored, all of them
+read -1.000 and the task ranked nothing.
+
+The two jobs are separate, so they now get separate constants. A per-task score keeps its
+full spread and stays diagnostic; the SUITE aggregate clips each task's contribution at
+TASK_FLOOR so no single task can dominate. Aggregation is bounded, diagnosis is not.
+"""
+
+SCORE_FLOOR = SCENARIO_FLOOR
+"""Deprecated alias, kept so an older analysis script does not silently change meaning."""
 
 _DEGENERATE_EPS = 1e-12
 
@@ -104,7 +117,7 @@ def score_scenario(
         return ScenarioScore(seed=seed, score=SAFETY_GATE_SCORE, gated=True, cost=submission)
     return ScenarioScore(
         seed=seed,
-        score=max(SCORE_FLOOR, anchored_score(submission.total, hold, reference)),
+        score=max(SCENARIO_FLOOR, anchored_score(submission.total, hold, reference)),
         gated=False,
         cost=submission,
     )
@@ -120,3 +133,16 @@ def score_task(task_id: str, scenarios: Sequence[ScenarioScore], alpha: float = 
         worst=float(np.min(values)) if values else float("nan"),
         gated_count=sum(1 for s in scenarios if s.gated),
     )
+
+
+def suite_score(task_scores: Sequence[float], floor: float = TASK_FLOOR) -> float:
+    """Aggregate per-task scores into one number, bounding each task's contribution.
+
+    Clipping happens HERE and not in the per-task score, so a task keeps its diagnostic
+    spread while no single task can dominate the aggregate. A task a model produced no
+    controller for is the caller's job to include as 0.0 — dropping it would reward failing
+    to answer.
+    """
+    if not len(task_scores):
+        return float("nan")
+    return float(np.mean([max(floor, s) for s in task_scores]))

@@ -1,0 +1,135 @@
+# four_tank_blind_v1 — the same rig as four_tank_v1, with the model taken away.
+#
+# Identical plant, identical mismatch draw, identical disturbance, identical seeds, and the
+# SAME REFERENCE ANCHOR. Only one field differs: tier is `blind`, so the brief carries no
+# model_hint. A competitor gets a tag list, units, engineering ranges, actuator limits, a
+# scan rate and a safety envelope — the operating manual, not the equations.
+#
+# Two reasons this task exists.
+#
+# 1. It exercises the design's flagship tier, which nothing else in the suite does. Every
+#    other task is `mismatch` and hands over nominal parameters, so system identification
+#    has so far been optional.
+# 2. It fills a measured gap in the suite's difficulty. On the first full run the field
+#    clustered at +0.30 to +0.98 on four_tank_v1 and then fell off a cliff on
+#    four_tank_nmp_v1, where 8 of 14 models scored below the hold anchor and nobody beat
+#    the reference. There was nothing in between. Because this task changes only what the
+#    competitor is TOLD, any score difference against four_tank_v1 is attributable to the
+#    missing model and to nothing else — a controlled comparison, not a new plant.
+#
+# The anchors are unchanged by construction: the reference is a fixed-gain PI that never
+# reads the brief, so `validate` passes on exactly the numbers four_tank_v1 does.
+#
+# IMMUTABLE ONCE PUBLISHED. Cut a v2 rather than editing.
+
+task_id: four_tank_blind_v1
+tier: blind
+
+description: >
+  Two pumps feed four interconnected tanks. Each pump splits its flow between one lower tank
+  and the diagonally opposite upper tank, which drains into the other lower tank, so each
+  pump reaches each measured level by two paths with different time constants. Only the two
+  lower tank levels are instrumented. All four tanks overflow at 20 cm, including the two you
+  cannot measure. Outflow is by gravity through a fixed orifice.
+
+  You are NOT given a model. Nothing about the flow split, the orifice sizes, the pump gains
+  or the tank areas is published, and they differ from unit to unit. What you are given is
+  what a commissioning engineer is handed on the first morning: the tag list, the units, the
+  engineering ranges, the actuator limits, the scan rate and the trip settings. Anything else
+  you need, you will have to find out from the plant.
+
+plant:
+  kind: four_tank
+  preset: P_minus
+  sample_time: 2.0
+  substeps: 20
+  nominal_v: [3.0, 3.0]
+  h_max: 20.0
+  # No lower trip. Nothing takes suction from the drain tanks, so an empty tank 3 is not a
+  # hazard — it is just a pump that has been shut. An earlier draft tripped at 0.2 cm and
+  # made "close pump 2 for a while" an automatic fail, which punished a correct response to
+  # a high initial level. Overflow is the real hazard on this rig, and it is one-sided.
+  h_min: 0.0
+  # Relative log-normal spread applied per scenario. The controller is told the NOMINAL
+  # parameters (mismatch tier) and runs against a draw from this.
+  #
+  # Sized against the initial condition, not by taste. Level goes as 1/a^2, so an area
+  # spread of 0.05 put some draws at h2 = 18.4 cm before the controller had done anything —
+  # 1.6 cm from an overflow that would gate the scenario no matter who was controlling it.
+  # A scenario no controller can pass is noise in the ensemble. At 0.03 the initial spread
+  # is h2 in [10.7, 15.9] against a 20 cm limit: still a hard robustness test, still winnable.
+  mismatch:
+    a1: 0.03
+    a2: 0.03
+    a3: 0.03
+    a4: 0.03
+    k1: 0.025
+    k2: 0.025
+    gamma1: 0.02
+    gamma2: 0.02
+
+horizon: 1200.0
+controlled: [0, 1]
+
+# Values are ordered like `controlled`. A step, then a ramp, then a return: a controller
+# tuned only against steps often mishandles a slow ramp, where the integrator has time to
+# wind up before the process catches on.
+setpoints:
+  - { t: 0,    values: [12.26, 12.78] }
+  - { t: 200,  values: [14.00, 12.78] }
+  - { t: 500,  values: [14.00, 11.20], ramp: 60 }
+  - { t: 900,  values: [12.26, 12.78] }
+
+# Tank 1's outlet orifice opens up mid-run: a leak, arriving while the loops are settled.
+disturbances:
+  - { t: 700, params: { a1: 0.088 } }
+
+instruments:
+  sensors:
+    noise_std: 0.03          # cm, level transmitter
+    deadtime_samples: 1      # one scan of transport delay
+    quantization: 0.01       # cm
+    dropout_prob: 0.001
+  actuators:
+    rate_limit: 0.5          # V/s pump slew
+    deadband: 0.02           # V of stiction
+
+scoring:
+  w_error: 1.0
+  # Raised from 0.1 after the first full field: at 0.1 the effort term was ~5% of cost and a
+  # submission moving the valve 24x more than the reference still scored +0.507.
+  w_effort: 0.5
+  cvar_alpha: 0.10
+  # Actuator duty ceiling, ~4x the tuned reference's tv of 0.00425. Above this the scenario
+  # is gated: holding setpoint by hammering the valve is not a trade a plant will accept.
+  max_total_variation: 0.017
+
+budget:
+  step_seconds: 0.05
+  max_overruns: 20
+
+# The 1.0 anchor. Published in full so it can be argued with — an under-tuned reference
+# inflates every score on this task, so how it was obtained is part of the task, not a
+# footnote.
+#
+# Reference: IDENTICAL to four_tank_v1's, deliberately. The anchor must not move between
+# the two tasks or the comparison they exist to support would be confounded.
+# Provenance: coordinate descent over (kp, ti, beta) per loop, minimizing mean scenario cost
+# on the first 6 seeds, then re-checked on all 20. The first draft of this file carried
+# kp=[1.50,1.35] ti=[30,40] by hand and was beaten by the naive example submission in
+# examples/pi_controller.py — which is exactly the failure the anchor is supposed to make
+# impossible, so it was retuned. The cost surface is flat across kp 1.8-2.2 and ti 20-25
+# (<1% spread), so these gains are a genuine optimum rather than a knife-edge fit; pushing
+# to kp=3.0 is 23% worse and nearly doubles valve movement.
+#
+# Tuned on the dev seeds it anchors. That is acceptable for a published, inspectable
+# baseline everyone competes against equally, and it is stated here rather than assumed.
+reference:
+  kind: pid
+  pairing: [0, 1]
+  kp: [2.0, 2.0]
+  ti: [20.0, 20.0]
+  beta: [1.0, 1.0]
+
+scenarios:
+  seeds: [11, 23, 37, 41, 59, 67, 73, 89, 97, 103, 127, 149, 163, 179, 191, 211, 227, 239, 251, 269]

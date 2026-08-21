@@ -7,10 +7,15 @@ guessing reasonable PI gains; it cannot do that on a plant whose correct pairing
 off-diagonal, whose deadtime moves with throughput, and whose operating point is open-loop
 unstable, all at once.
 
-Aggregation rule: a model's suite score is the **mean of its per-task CVaR@10%**, and a task
-it produced no controller for scores 0.0 rather than being dropped. Dropping a missing task
-would reward a model for failing to answer — the same reason a crashed scenario stays in its
-ensemble instead of being quietly excluded.
+Aggregation rule: a model's suite score is the mean of its per-task CVaR@10%, with each
+task's contribution clipped at `TASK_FLOOR` so no single task can dominate. A task a model
+produced no controller for scores 0.0 rather than being dropped — dropping it would reward
+failing to answer, the same reason a crashed scenario stays in its ensemble.
+
+The per-task columns are NOT clipped. They spread from about +1.1 down to -7 in practice,
+and that spread is the diagnostic content: on four_tank_nmp the field ranges from -0.59 to
+-6.80, a tenfold difference in how badly each model failed that an earlier per-scenario floor
+flattened into a column of identical -1.000s.
 
     python experiments/matrix.py --tasks tasks/*.yaml --submissions experiments/submissions
 """
@@ -25,6 +30,7 @@ import numpy as np
 
 from rtcbench.baselines import Hold, build_reference
 from rtcbench.harness import run_ensemble, score_against_anchors
+from rtcbench.score import TASK_FLOOR, suite_score
 from rtcbench.submission import load_controller
 from rtcbench.task import Task
 
@@ -94,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     suite = {
-        n: float(np.mean([per_task[t.task_id].get(n, {}).get("score", MISSING) for t in tasks]))
+        n: suite_score([per_task[t.task_id].get(n, {}).get("score", MISSING) for t in tasks])
         for n in names
     }
     ranked = sorted(names, key=lambda n: -suite[n])
@@ -115,12 +121,15 @@ def main(argv: list[str] | None = None) -> int:
             elif e.get("note"):
                 cells.append(f"{'ERR':>{colw}}")
             elif e.get("gated"):
-                cells.append(f"{e['score']:>{colw-1}.3f}*")
+                cells.append(f"{e['score']:>{colw-1}.2f}*")
             else:
-                cells.append(f"{e['score']:>{colw}.3f}")
+                cells.append(f"{e['score']:>{colw}.2f}")
         print(f"{i:<5} {n:<{width}} {suite[n]:>+8.3f} " + " ".join(cells))
 
-    print("\nSUITE = mean of per-task CVaR@10%. A task with no controller scores 0.000, not dropped.")
+    print(f"\nSUITE = mean of per-task CVaR@10%, each task clipped at {TASK_FLOOR:+.1f} so that "
+          "no single task can dominate.")
+    print("Per-task columns are UNCLIPPED — their spread is the diagnostic content.")
+    print("A task with no controller scores 0.00, not dropped.")
     print("*  = at least one scenario gated (safety envelope or actuator duty).")
     print("-- = no submission for that task.   ERR = module would not import.")
 
