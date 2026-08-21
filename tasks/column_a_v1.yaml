@@ -1,0 +1,155 @@
+# column_a_v1 — Skogestad's Column A, dual composition control, mismatch tier
+#
+# The pack's ill-conditioned task. cond(G) = 145 and RGA lambda_11 = 36 at the duty point:
+# the two loops fight, the two reachable directions differ by two orders of magnitude in
+# gain, and the cheap directions are also the fast ones. See the module docstring in
+# src/rtcbench/plants/column_a.py for the numbers.
+#
+# TIME IS IN MINUTES on this task. sample_time 1.0 is a one-minute control period, horizon
+# 400 is 400 minutes, and rate limits are per minute. The column's flows are kmol/min and
+# its dominant time constant is 194 min; expressing all that in seconds would put the
+# reference's integral time (5 min) outside the shared tuner's grid, which tops out at 200,
+# for no gain in realism. `rtcbench show` prints the unit as "s" because it is written for
+# the pack's other plants — read those as minutes here. The compute budget below is the one
+# quantity that really is in seconds: it is wall clock, not process time.
+#
+# IMMUTABLE ONCE PUBLISHED. Changing any value here changes what every historical score
+# means. Cut column_a_v2 instead.
+
+task_id: column_a_v1
+tier: mismatch
+
+description: >
+  A 41-stage binary distillation column separating a 50/50 feed: reboiler, 39 trays, total
+  condenser, feed entering on stage 21 as saturated liquid at 1 kmol/min. Two flows are
+  manipulated — the reflux returned to the top tray (FC-201) and the boilup raised in the
+  reboiler (FC-202) — and the column is run on internal reflux, so the distillate and
+  bottoms draws are whatever the two flows leave over: D = V - L overhead and
+  B = L + F - V at the base. Two analysers report each product's own purity on a
+  one-minute cycle — AT-101 the light key overhead, AT-102 the heavy key in the bottoms —
+  so both loops are direct acting. The 39 tray compositions between them are not measured,
+  and neither product draw is metered. The commissioned duty point is L = 2.70629,
+  V = 3.20629 kmol/min, which makes 99.0% distillate and 99.0% bottoms purity with
+  0.5 kmol/min of each product. The column is slow: its dominant time constant is about
+  194 minutes.
+
+  Operating limits. Either product below 0.85 purity is off-spec badly enough to be routed
+  to slops, and the column is tripped off automatic. (The bottoms trip is written on the
+  true light-key mole fraction xB, which is 1 - AT-102.) Either product draw falling below
+  0.05 kmol/min means the column has been squeezed to no net production — the reflux drum
+  or the sump is being filled rather than drawn — and is also a trip. Nothing stops the two
+  flows being commanded within 0.05 kmol/min of each other except the controller, and
+  nothing measures the draws to warn it.
+
+plant:
+  kind: column_a
+  sample_time: 1.0          # minutes
+  substeps: 20              # RK4 h = 0.05 min; stability needs h < 0.086 min
+  nominal_lv: [2.70629, 3.20629]
+  reflux_range: [1.5, 4.5]
+  boilup_range: [2.0, 5.0]
+  yd_min: 0.85
+  xb_max: 0.15
+  min_product: 0.05
+  # Relative log-normal spread applied per scenario. The controller is told the NOMINAL
+  # parameters (mismatch tier) and runs against a draw from this.
+  #
+  # Sized against the initial condition, as the authoring guide requires. This column is
+  # brutally sensitive to its parameters at fixed flows: a 2% error in feed rate alone
+  # moves the start point from xB = 0.010 to xB = 0.026, and 1.2% on the relative
+  # volatility moves it to 0.014. Measured over the 20 published draws the plant starts in
+  # yD = [0.946, 0.997], xB = [0.002, 0.049] — a long way off setpoint, which is the point,
+  # but a factor of three inside the 0.15 trip, so no draw is lost before the controller
+  # has done anything. Holding the actuators through the whole scenario, disturbance
+  # included, the worst draw reaches xB = 0.116 against that 0.15 trip: uncomfortable,
+  # never unwinnable, and checked rather than assumed.
+  #
+  # The holdups move the dynamics without moving the steady state — the mismatch a
+  # controller tuned on nominal dynamics should have to survive. The two flow-controller
+  # span errors are the classic distillation uncertainty and the reason this task is hard:
+  # they are applied to the deviation from the duty point, so they cost nothing at t=0 and
+  # everything to a controller that commands two large moves expecting their difference to
+  # come out right. 0.05 log-normal is about +/-10% at two sigma, half the +/-20% the
+  # textbook case study uses, because the textbook case is open-loop analysis and this one
+  # has to stay winnable closed-loop on every draw.
+  mismatch:
+    alpha: 0.012
+    F: 0.02
+    zF: 0.015
+    M_tray: 0.06
+    M_reboiler: 0.06
+    M_condenser: 0.06
+    gain_L: 0.05
+    gain_V: 0.05
+
+horizon: 400.0              # minutes
+controlled: [0, 1]
+
+# Values are [distillate purity, bottoms purity], ordered like `controlled`. Both are
+# fractions of that product's own key component, so 0.994 means the same thing on both.
+#
+# Both setpoint moves are in the plant's SLUGGISH direction, deliberately — that is where
+# the task lives. Solved exactly, at nominal parameters:
+#
+#   t=80   both products purer, 0.990 -> 0.994. Reflux and boilup must go from
+#          (2.706, 3.206) to (3.151, 3.651): +0.445 kmol/min on both flows, a 16% increase
+#          in internal traffic, to move each composition by four thousandths. The split
+#          D = V - L does not change at all. Any error BETWEEN the two flows does change
+#          it, and the plant multiplies that error by ~100.
+#   t=220  a ramp, top loosened and bottom tightened: (3.151, 3.651) -> (2.961, 3.466).
+#          Both flows down 0.19, plus five thousandths of differential — the same
+#          sluggish direction with a little of the stiff one mixed in, taken slowly
+#          because an integrator that copes with a step can still wind up on a ramp.
+#
+# The stiff, high-gain direction is exercised by the disturbance instead, which is how it
+# arrives on a real column: nothing about a feed upset asks permission first.
+setpoints:
+  - { t: 0,   values: [0.990, 0.990] }
+  - { t: 80,  values: [0.994, 0.994] }
+  - { t: 220, values: [0.986, 0.996], ramp: 40 }
+
+# A 10% throughput increase, arriving while the loops are settled at the tight setpoint.
+# This is the split direction: with the flows held, D stays at 0.5 while 0.55 of light key
+# is now arriving, and the surplus leaves in the bottoms — xB goes from 0.010 to 0.088,
+# bottoms purity 0.99 to 0.91, for a disturbance the column cannot see. Correcting it takes
+# about 0.05 kmol/min of differential move, a hundredth of what the setpoint changes cost,
+# which is the whole point of this plant in one comparison. Note this sets F to an absolute
+# value, so it also washes out that scenario's F draw from t=150 on.
+disturbances:
+  - { t: 150, params: { F: 1.10 } }
+
+instruments:
+  sensors:
+    noise_std: 0.0005        # mole fraction, on-line analyser
+    deadtime_samples: 4      # one analyser cycle plus sample transport, 4 min
+    quantization: 0.0002     # mole fraction
+    dropout_prob: 0.002      # analysers do fail, and more often than level transmitters
+  actuators:
+    rate_limit: 0.1          # kmol/min per MINUTE of flow-controller slew
+    deadband: 0.0005         # kmol/min of flow-loop stiction. Small, and still worth
+                             # 0.0005 of bottoms composition all by itself.
+
+scoring:
+  w_error: 1.0
+  # Effort is weighted up relative to four_tank_v1's 0.5 because the flows here barely
+  # have to move in span terms: the whole exercise is a few tenths of a kmol/min against a
+  # 3 kmol/min range, so at w_effort = 0.5 the effort term was under 2% of the reference's
+  # cost and a chattering submission was effectively unpriced. At 5.0 it is ~10%, the same
+  # share it carries on four_tank_v1.
+  w_effort: 5.0
+  cvar_alpha: 0.10
+  max_total_variation: 0.0030   # ~4x the tuned reference's tv, see below
+budget:
+  step_seconds: 0.05
+  max_overruns: 20
+
+# The 1.0 anchor, published in full so it can be argued with.
+reference:
+  kind: pid
+  pairing: [0, 1]
+  kp: [1.0, 1.0]
+  ti: [30.0, 30.0]
+  beta: [1.0, 1.0]
+
+scenarios:
+  seeds: [11, 23, 37, 41, 59, 67, 73, 89, 97, 103, 127, 149, 163, 179, 191, 211, 227, 239, 251, 269]

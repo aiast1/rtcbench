@@ -1,0 +1,124 @@
+# van_de_vusse_v1 -- Van de Vusse CSTR, mismatch tier
+#
+# A -> B -> C plus 2A -> D in a jacketed CSTR (Chen/Kremling/Allgower 1995; Klatt/Engell
+# 1998). The defining pathology: the steady-state gain from feed dilution rate (F/V) to
+# product concentration (C_B) changes SIGN. C_B(F/V) climbs, peaks near F/V=14.7 h^-1, and
+# falls again -- and the published nominal operating point (F/V=14.19) sits right on the
+# shoulder of that peak, gain ~+0.0013, essentially the smallest positive value on the whole
+# curve. A controller that reads "the loop feels sluggish here, wind up the gain" -- a
+# textbook-reasonable response to a small nominal gain -- builds exactly the integral
+# momentum that carries the operating point across the peak, where the same control action
+# now pushes C_B the wrong way. See src/rtcbench/plants/van_de_vusse.py's docstring for the
+# full mechanism and citations.
+#
+# The setpoint schedule below is built to make a controller's INTEGRAL time, not just its
+# proportional gain, the deciding factor: reaching each target requires a large F/V
+# excursion (the whole curve only spans ~0.2 mol/L in C_B, so a modest C_B step demands a
+# multi-unit F/V move), so a short integral time builds momentum fast enough to overshoot
+# the peak, while the same proportional gain paired with a long integral time approaches
+# gently and never crosses it. That was verified empirically (see the reference block below)
+# before this file was finalized: on a coordinate/grid search over kp in [0.05, 8.0] and ti
+# in [5, 200] (the tuner's own grid), every (kp, ti) pair with ti <= 20 s scored 2.3-3x worse
+# than doing nothing, regardless of kp; every well-scoring pair had ti >= 30 s.
+#
+# IMMUTABLE ONCE PUBLISHED. Changing any value here changes what every historical score
+# means. Cut van_de_vusse_v2 instead.
+
+task_id: van_de_vusse_v1
+tier: mismatch
+
+description: >
+  A jacketed CSTR running A -> B -> C in series plus 2A -> D in parallel; B is the wanted
+  product. Feed dilution rate (F/V) sets residence time and therefore conversion; jacket
+  heat duty (Q_K) sets reactor temperature. Product concentration C_B is read by a slow
+  at-line analyzer; reactor temperature T by a fast thermocouple. Jacket temperature T_K is
+  not instrumented but shares the reactor's 150 degC materials limit. F/V has a working
+  range of 3-35 h^-1; Q_K is cooling-only, 0 to -9000 kJ/h. The C_B-to-F/V relationship is
+  NOT monotonic: past roughly F/V=14.7 h^-1, more feed makes less product, not more.
+
+plant:
+  kind: van_de_vusse
+  sample_time: 10.0
+  substeps: 20
+  nominal_u: [14.19, -1113.5]
+  u_lo: [3.0, -9000.0]
+  u_hi: [35.0, 0.0]
+  T_max: 150.0
+  TK_max: 150.0
+  # Relative log-normal spread applied per scenario; the brief carries the NOMINAL values
+  # (mismatch tier). Sized against the initial condition: the published operating point
+  # (T=114.2, T_K=112.9 degC) sits 35+ degC below the 150 degC limit, so even the widest
+  # draw here (T0 at 0.01, the tightest -- feed temperature is a utility-controlled stream
+  # and does not swing far) leaves generous headroom; nothing here can start a scenario
+  # already close to a constraint.
+  mismatch:
+    k10: 0.03
+    k30: 0.03
+    kw: 0.04
+    CA0: 0.02
+    T0: 0.01
+
+horizon: 7200.0
+controlled: [0, 1]
+
+# C_B (mol/L), T (degC). Every C_B target here is individually reachable on the LOW-F/V
+# (positive-gain) branch -- this is not an unreachable setpoint, it is a large enough
+# excursion that an impatient integrator overshoots the peak on the way. T is held at its
+# nominal value throughout so the C_B/F/V pathology is not confounded with a second moving
+# target; the T loop still does real work rejecting the coupling and, later, the disturbance.
+# Excursions widened 1.8x from the first draft. The original span (0.98-1.09 mol/L) left
+# the reference only 20-150% better than frozen actuators, and on seed 41 the two anchors
+# crossed -- doing nothing scored better than controlling. Hold accumulates error in
+# proportion to how far the setpoints travel, so a longer journey separates the anchors
+# without making the plant any easier. Every target is still on the low-F/V positive-gain
+# branch.
+setpoints:
+  - { t: 0,    values: [1.090, 114.19] }
+  - { t: 900,  values: [0.928, 114.19] }
+  - { t: 2900, values: [1.081, 114.19], ramp: 600 }
+  - { t: 4600, values: [0.892, 114.19] }
+  - { t: 6100, values: [1.090, 114.19] }
+
+# Jacket fouling: kw drops to 70% of nominal while the loop is away from its commissioned
+# point, stressing the T_K loop exactly when the C_B loop also has the least margin.
+disturbances:
+  - { t: 5200, params: { kw: 2822.4 } }
+
+instruments:
+  sensors:
+    noise_std: [0.01, 0.15]      # mol/L on the analyzer, degC on the thermocouple
+    deadtime_samples: [3, 0]     # at-line analyzer lag vs. a thermocouple's near-instant read
+    quantization: [0.005, 0.05]
+    dropout_prob: [0.001, 0.001]
+  actuators:
+    rate_limit: [0.5, 200.0]     # (1/h)/s on F/V, (kJ/h)/s on Q_K
+    deadband: [0.05, 5.0]
+
+scoring:
+  w_error: 1.0
+  w_effort: 0.5
+  cvar_alpha: 0.10
+  # ~4x the tuned reference's tv -- see the provenance comment above `reference:` below.
+  max_total_variation: 0.00134   # ~4x the tuned reference's tv
+
+budget:
+  step_seconds: 0.05
+  max_overruns: 20
+
+# Provenance: experiments/tune_reference.py, coordinate descent over (kp, ti, beta)
+# per loop. Best mean cost 0.027152 with zero gated scenarios.
+# Flatness: +C:/Program Files/Git/-25% on kp costs 0.7% to 7.1% -- a broad basin, not a fit to the seeds.
+# Asymmetric by necessity: loop 2 needs ti=5s while loop 1 needs ti=350s. That gap is the
+# van de Vusse gain reversal in the tuning -- the loops sit on opposite sides of it and
+# cannot share a time constant.
+# The reference defines 1.0 on this task, so an under-tuned one inflates every score
+# here forever. If a naive PI beats it, the reference is wrong, not the naive PI.
+reference:
+  kind: pid
+  pairing: [0, 1]
+  kp: [15.0, 8.0]
+  ti: [350.0, 5.0]
+  beta: [0.8, 1.0]
+
+scenarios:
+  seeds: [11, 23, 37, 41, 59, 67, 73, 89, 97, 103, 127, 149, 163, 179, 191, 211, 227, 239, 251, 269]

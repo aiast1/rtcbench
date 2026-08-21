@@ -1,0 +1,176 @@
+# ph_neutralization_v1 -- acid/base CSTR with a carbonate buffer, mismatch tier
+#
+# The pack's gain-variation task. The titration curve is not a curve the model was told
+# about: it falls out of the electroneutrality relation solved against the tank's two
+# reaction invariants, and with these feeds it runs from 0.065 pH/(mL/s) at pH 2.7 through
+# a flat bicarbonate shelf at 0.31 near pH 6.5, up to 2.94 at pH 8.2, and back down to 0.19
+# at pH 9.9. The setpoint schedule below visits the shelf, the equivalence point and the
+# deaf end deliberately -- a task that stayed on one part of the curve would not exercise
+# the only thing this plant is here to exercise.
+#
+# IMMUTABLE ONCE PUBLISHED. Changing any value here changes what every historical score
+# means. Cut ph_neutralization_v2 instead.
+
+task_id: ph_neutralization_v1
+tier: mismatch
+
+description: >
+  Effluent neutralization. A nitric acid stream and a small sodium bicarbonate buffer
+  stream run continuously into a stirred tank; a metering pump adds sodium hydroxide, and
+  that pump is the only thing you can move. Acid and buffer feed rates are uncontrolled
+  load and are not instrumented, so a change in either arrives as an unexplained shift in
+  pH. The tank drains through a standpipe with no level control, so level is
+  self-regulating but rides on the base flow: more caustic means a higher tank, and the
+  level limits below are what stops you from parking the pump at either end of its range.
+  Effluent pH is measured downstream of the tank through a sample line, so the analyzer
+  reads about twenty seconds late; tank level is measured directly. Discharge consent is
+  pH 4.0 to 10.5 on the true effluent, not on the analyzer.
+
+plant:
+  kind: ph_neutralization
+  sample_time: 5.0
+  substeps: 10
+  # Duty point: 14.22 mL/s of caustic puts the nominal plant at pH 6.50 on the buffer
+  # shelf, which is where the schedule starts. Deliberately NOT the paper's pH 7.0 point:
+  # pH 7.0 sits on the shoulder of the equivalence step, where a 2% draw on acid strength
+  # moves the starting pH by more than a unit and the scenario becomes a lottery on the
+  # initial condition rather than a control problem.
+  nominal_q3: 14.22
+  q3_max: 30.0
+  h_max: 30.0
+  h_min: 5.0
+  ph_min: 4.0
+  ph_max: 10.5
+  # Relative log-normal spread applied per scenario. The controller is told the NOMINAL
+  # parameters (mismatch tier) and runs against a draw from this.
+  #
+  # Sized against the initial condition. On the shelf these draws start the ensemble at
+  # pH 6.16 to 6.67 against consent limits of 4.0 and 10.5, and at 10.4 to 15.4 cm against
+  # level limits of 5 and 30 cm -- a real robustness test with no draw born in trouble.
+  # The buffer concentration Wb2 carries the widest spread on purpose: it sets how steep
+  # the equivalence step is, so the controller does not know the gain of the very thing
+  # that defeats it. Cv4 was cut from 0.03 to 0.02 after 0.03 put one draw's initial level
+  # at 16.9 cm, which is not unwinnable but is most of the way to the overflow trip before
+  # the controller has done anything.
+  mismatch:
+    q1: 0.02
+    Wa1: 0.02
+    Wb2: 0.03
+    Wa3: 0.015
+    Cv4: 0.02
+
+horizon: 2000.0
+controlled: [0]
+
+# Values are ordered like `controlled` -- pH only. Level is measured and hard-limited but
+# carries no setpoint.
+#
+# The schedule is the task. Each move lands on a different part of the titration curve:
+#   6.50  bicarbonate shelf,  gain 0.31 pH/(mL/s)
+#   8.20  equivalence point,  gain 2.94   -- 9.4x the shelf
+#   9.90  caustic end,        gain 0.19   -- 15x below the equivalence point
+# and the return to 6.50 crosses the equivalence step on the way down. That crossing is
+# where a controller carrying enough gain to have moved the shelf finds itself with ten
+# times too much of it: it does not usually break consent, it settles into a limit cycle
+# around the equivalence point and blows the actuator duty ceiling instead, which gates the
+# scenario just as hard. The ramp is there because a loop tuned only on steps winds up on
+# one; it also sweeps the plant continuously across the gain change rather than jumping it.
+setpoints:
+  - { t: 0,    values: [6.50] }
+  - { t: 350,  values: [8.20] }
+  - { t: 800,  values: [9.90], ramp: 200 }
+  - { t: 1300, values: [6.50] }
+
+# The upstream unit ramps its acid load up in two stages. Both are step changes in q1,
+# which is neither manipulated nor instrumented, so they arrive as an unexplained pH shift.
+#
+# The first lands while the loop is holding the equivalence-point setpoint, where the plant
+# is at its most sensitive: with the pump frozen where it was, 6% more acid drags the
+# effluent from pH 8.20 to 7.02. The second lands on the buffer shelf, where it takes 15%
+# more acid to move a frozen plant from 6.50 to 5.61 -- three times less pH per unit of
+# load. Same disturbance mechanism, two operating points, and the gain the controller has
+# to reject it with differs by an order of magnitude. Rejecting both with one fixed set of
+# gains is the task.
+#
+# Sized so that doing nothing still lands at pH 4.97 on the worst draw: an upset, not an
+# automatic gate. At 20% the hold anchor itself trips consent on some draws, which would
+# make those scenarios unwinnable before any controller was involved.
+disturbances:
+  - { t: 600,  params: { q1: 17.6 } }
+  - { t: 1550, params: { q1: 19.1 } }
+
+instruments:
+  sensors:
+    noise_std: [0.02, 0.05]        # pH units on the analyzer, cm on the level transmitter
+    # 20 s of sample-line transport on the pH analyzer; the level transmitter is direct.
+    # Four samples, not one: with no delay at all a first-order plant is stable under any
+    # proportional gain, so gain variation could only ever make a loop sluggish, never
+    # unstable, and the task would have no trap in it. 20 s against an 88 s residence time
+    # is a mild delay by pH-loop standards (theta/tau = 0.23, nowhere near deadtime
+    # dominant) and it is what converts the 15x gain swing into a stability limit that
+    # moves with the operating point. At 2 samples the compromise gain kp=3.5 was good
+    # enough everywhere and the plant did not defeat anything.
+    deadtime_samples: [4, 0]
+    quantization: [0.01, 0.02]
+    dropout_prob: [0.002, 0.001]
+  actuators:
+    rate_limit: 0.5                # mL/s per second, metering pump slew
+    deadband: 0.05                 # mL/s of pump dead zone
+
+scoring:
+  w_error: 1.0
+  w_effort: 0.5
+  cvar_alpha: 0.10
+  # Actuator duty ceiling, ~4x the tuned reference's tv of 0.00102. A pH loop is the
+  # classic place to hold setpoint by hammering the metering pump -- the limit cycle a
+  # high-gain loop settles into around the equivalence point looks almost fine on tracking
+  # error and is ruinous on the pump -- so this gate does more work here than on a level
+  # task. kp=5.0 exceeds it on all 20 scenarios; kp=3.5 does not.
+  max_total_variation: 0.0041
+
+budget:
+  step_seconds: 0.05
+  max_overruns: 20
+
+# The 1.0 anchor. Published in full so it can be argued with -- an under-tuned reference
+# inflates every score on this task forever, so how it was obtained is part of the task.
+#
+# Provenance: `python experiments/tune_reference.py --task tasks/ph_neutralization_v1.yaml`
+# proposed kp=2.5 ti=120 (mean cost 0.023626 over the first 6 seeds; any tuning that
+# violates a constraint or exceeds the duty ceiling on any draw scores infinite and cannot
+# win). Its kp/ti grids are coarse near this optimum, so that was refined on a 7x6 grid of
+# kp in [1.2, 4.5] x ti in [45, 200] over the same 6 seeds, which found kp=2.2 ti=90 at
+# 0.022996 -- 2.7% better. beta stayed at 1.0: setpoint weighting below 1 softens the very
+# setpoint moves this task is built around, and every value below 1.0 was worse.
+#
+# Flatness: the basin is broad. kp 1.8-3.0 crossed with ti 70-200 all land within 20% of
+# the optimum, and the tuner's own +/-25%-on-kp probe costs 0.7% to 9.3%. So these gains are
+# a genuine optimum rather than a knife-edge fit to six seeds. Detuning costs: kp=1.2 is
+# +21%, kp=3.5 is +16%, kp=4.5 exceeds the duty ceiling on every draw and scores zero.
+#
+# Why the optimum sits in an uncomfortable middle -- mean |error| in pH, by phase:
+#
+#     kp     shelf 6.5   equivalence 8.2   deaf 9.9   shelf surge   duty gate
+#     1.2      0.040          0.339         0.242        0.155         ok
+#     2.2      0.017          0.362         0.119        0.154         ok      <- reference
+#     3.5      0.007          0.743         0.052        0.112         ok
+#     5.0      0.006          1.079         0.023        0.058       GATED 20/20
+#
+# Every column except the equivalence point wants kp at 5 or above: the shelf improves 7x,
+# the deaf end 10x, the load surge 3x. The equivalence point refuses it -- 3x worse tracking
+# and a limit cycle that blows the duty ceiling on every scenario. There is no fixed gain
+# that is both, which is the whole point of the plant, and 2.2 is where the compromise
+# lands. A controller that varies its gain along the titration curve is not obliged to make
+# that trade.
+#
+# Tuned on the dev seeds it anchors. That is acceptable for a published, inspectable
+# baseline everyone competes against equally, and it is stated here rather than assumed.
+reference:
+  kind: pid
+  pairing: [0]
+  kp: [2.2]
+  ti: [90.0]
+  beta: [1.0]
+
+scenarios:
+  seeds: [11, 23, 37, 41, 59, 67, 73, 89, 97, 103, 127, 149, 163, 179, 191, 211, 227, 239, 251, 269]

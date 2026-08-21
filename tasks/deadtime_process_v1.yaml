@@ -1,0 +1,116 @@
+# deadtime_process_v1 -- heated transport line, deadtime-dominant, mismatch tier
+#
+# theta/tau (deadtime over the heater's own time constant) runs from about 3.3 at the
+# scenario's fastest scheduled flow to about 16.7 at its slowest -- solidly deadtime-dominant
+# throughout, per the module docstring in src/rtcbench/plants/deadtime_process.py. The point
+# of the task is not the ratio, though: it is that theta itself is not a fixed number. The
+# transport delay is line volume over current flow, throughput is set by an upstream pump
+# this loop does not own, and two disturbances in this scenario change it substantially. A
+# controller (or a Smith predictor) that identifies theta once and designs around it is
+# correct for one regime and wrong for the other two.
+#
+# IMMUTABLE ONCE PUBLISHED. Changing any value here changes what every historical score
+# means. Cut deadtime_process_v2 instead.
+
+task_id: deadtime_process_v1
+tier: mismatch
+
+description: >
+  A trace-heated transport line. TIC-401 sets the heater duty (0-100%) at the pipe inlet;
+  TT-401, at the far end of a long, purely-convective transport run, is the only
+  instrumented temperature -- the heater's own outlet, immediately after the heated section,
+  has no sensor but shares the line's thermal-degradation limit. Throughput is set by an
+  upstream pump this loop does not own: it starts near 3.0 L/s, is throttled down to 1.2 L/s
+  partway through the run, and is later opened up to 6.0 L/s, which moves the transport
+  delay from about 80 s, to about 200 s, to about 40 s over the course of the scenario.
+
+plant:
+  kind: deadtime_process
+  sample_time: 5.0
+  substeps: 10
+  nominal_u: 50.0
+  T_in_max: 90.0
+  T_out_lo: 0.0
+  T_out_hi: 90.0
+  y_lo: 0.0
+  y_hi: 100.0
+  # Relative log-normal spread applied per scenario, on top of the disturbances below. The
+  # controller is told the NOMINAL parameters (mismatch tier) and runs against a draw from
+  # this.
+  #
+  # Sized against the initial condition, not by taste (AUTHORING_PLANTS.md section 1). At
+  # u=50% the nominal heater-outlet equilibrium is 55 degC against a 90 degC limit -- 35 degC
+  # of headroom. Checked over 2000 draws at these spreads, the worst T_in equilibrium was
+  # 61.3 degC: comfortably clear before the controller has done anything, and still a real
+  # spread on the numbers that matter (V_line/q sets theta; tau_h and K_h set the fast lag
+  # everyone is tempted to ignore).
+  mismatch:
+    V_line: 0.04
+    q: 0.04
+    tau_h: 0.05
+    K_h: 0.04
+    T_supply: 0.05
+
+horizon: 4400.0
+controlled: [0]
+
+# A step under the initial (fast-ish) regime, a step and a ramp under the slow regime the
+# first disturbance creates, and a final step once the second disturbance has sped things
+# back up -- so a controller tuned only against one theta is exercised against the other two
+# as well, not just against the disturbance transition itself.
+setpoints:
+  - { t: 0,    values: [55.0] }
+  - { t: 500,  values: [68.0] }
+  - { t: 1600, values: [48.0] }
+  - { t: 2600, values: [60.0], ramp: 200 }
+  - { t: 3700, values: [65.0] }
+
+# The transport delay's only source of motion in this task: a throughput turndown, then a
+# recovery past the original rate. theta = V_line/q moves from ~80 s to ~200 s at t=1300,
+# then to ~40 s at t=3400 -- a 5x range end to end.
+disturbances:
+  - { t: 1300, params: { q: 1.2 } }
+  - { t: 3400, params: { q: 6.0 } }
+
+instruments:
+  sensors:
+    noise_std: 0.15           # degC, TT-401 transmitter noise
+    deadtime_samples: 1       # one scan of transmitter/DCS lag, on top of the process's own
+    quantization: 0.1         # degC
+    dropout_prob: 0.001
+  actuators:
+    rate_limit: 8.0           # %/s heater duty slew
+    deadband: 0.2             # % of SCR/relay resolution
+
+scoring:
+  w_error: 1.0
+  w_effort: 0.5
+  cvar_alpha: 0.10
+  # ~4x the tuned reference's mean tv of 0.00030 (experiments/tune_reference.py's own
+  # suggestion, printed alongside the gains below).
+  max_total_variation: 0.0012
+
+budget:
+  step_seconds: 0.05
+  max_overruns: 20
+
+# The 1.0 anchor. Provenance: experiments/tune_reference.py, coordinate descent over
+# (kp, ti, beta) minimizing mean scenario cost on the first 6 seeds (11, 23, 37, 41, 59, 67),
+# then re-checked on the full 20-seed ensemble (mean cost 0.034578, mean tv 0.00030, 0
+# gated). +/-25% on kp costs 2.7% to 9.2% -- a broad, sound basin, not a knife-edge fit.
+#
+# ti=70 lands well short of the ~200 s deadtime the slow regime produces, and that is the
+# expected shape of a fixed compromise: something that has to survive theta=40s without
+# ringing and theta=200s without crawling is necessarily detuned relative to what either
+# regime alone would tolerate -- see the module docstring in
+# src/rtcbench/plants/deadtime_process.py. That detuning is the point of the task, not a
+# defect in the anchor; do not retune this by weakening the plant's deadtime instead.
+reference:
+  kind: pid
+  pairing: [0]
+  kp: [0.4]
+  ti: [70.0]
+  beta: [1.0]
+
+scenarios:
+  seeds: [11, 23, 37, 41, 59, 67, 73, 89, 97, 103, 127, 149, 163, 179, 191, 211, 227, 239, 251, 269]
