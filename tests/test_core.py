@@ -508,3 +508,21 @@ def test_a_scenario_keeps_its_spread_but_a_task_is_clipped_into_the_suite():
     assert suite_score([-6.8]) == pytest.approx(TASK_FLOOR)
     # ...and a merely-bad task is NOT clipped, so ordering survives above the floor.
     assert suite_score([0.0, -0.5]) == pytest.approx(-0.25)
+
+
+def test_core_never_imports_the_validators():
+    """`validators/` is dev-only and depends on scipy and Cantera.
+
+    If anything under src/ imported it, `pip install rtcbench` would stop being a
+    two-package install and the promise that the suite runs on any laptop would quietly
+    become false. Cheaper to assert than to discover from a user's traceback.
+    """
+    root = Path(__file__).resolve().parents[1] / "src" / "rtcbench"
+    offenders = [
+        f"{p.relative_to(root)}:{i}"
+        for p in root.rglob("*.py")
+        for i, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1)
+        if line.startswith(("import validators", "from validators"))
+        or "import scipy" in line or "import cantera" in line
+    ]
+    assert not offenders, f"core must not reach into the validator tree: {offenders}"

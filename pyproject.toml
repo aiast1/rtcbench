@@ -32,6 +32,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0", "ruff", "mypy"]
+# Independent oracles for validators/. Heavy and optional by design: NEVER imported by
+# src/rtcbench (there is a test enforcing that) and never shipped in the wheel, so
+# `pip install rtcbench` stays a two-package install.
+validators = ["scipy>=1.10", "cantera>=3.0"]
 
 [project.scripts]
 rtcbench = "rtcbench.cli:main"
