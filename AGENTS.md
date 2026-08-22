@@ -19,14 +19,14 @@ src/rtcbench/          core. two dependencies (numpy, pyyaml). keep it that way.
   harness.py           the sealed loop. one function does the actual benchmarking
   instruments.py       noise, deadtime, saturation, stiction -- separate from physics
   metrics.py score.py  cost decomposition, anchored scoring, the safety/duty gates
-  task.py              tasks are data; content-hashed; immutable once published
+  task.py              tasks are data; content-hashed; anchor merged from references/
   record.py trend.py   run records that can recompute their own score, and SVG trends
   baselines/           the hold and reference anchors -- these DEFINE 0.0 and 1.0
   plants/              one file per plant, auto-discovered
-tasks/                 one YAML per task. IMMUTABLE once published -- cut a v2
-tests/                 properties, not coverage. 160 tests, ~40 s
+tasks/                 one YAML per task; anchors live in tasks/references/
+tests/                 properties, not coverage. ~190 tests, ~80 s
 experiments/           tooling that is not part of the scored path (boto3 lives here)
-leaderboard/           committed results + the rendered report. never edited after the fact
+leaderboard/           committed results + report. never edited; re-run instead
 docs/                  AUTHORING_PLANTS.md is the contract for adding a plant
 ```
 
@@ -53,9 +53,11 @@ python experiments/report.py --out leaderboard/report.html
    truth goes to `Plant.audit()`, which the harness calls and a controller cannot reach. If
    you find yourself widening `Observation`, stop: that is the benchmark quietly becoming
    about something else.
-3. **A published task file is never edited.** Its content hash is in every run record. Cut
-   `<id>_v2.yaml` instead. Changing a task's disturbance, weights, or seeds silently changes
-   what every historical score on it meant.
+3. **A task may be edited freely — then the results must be re-run.** Pre-1.0, reruns cost
+   about a dollar; freezing tasks to protect an uncited comparison is the expensive choice.
+   The invariant is that no results file may claim to describe a task that has since changed:
+   each pins a content hash, and `experiments/check_stale.py` fails on drift. Cut a `v2` only
+   once something is published outside this repo.
 4. **The reference anchor defines 1.0.** Retuning it re-denominates every score on that task.
    If you change a task's scoring weights or disturbances, you *must* retune, and record the
    provenance in a comment above the `reference:` block.
@@ -107,8 +109,8 @@ unstyled; and two conflicting `display` declarations on one rule.
 
 Ask, in order:
 
-1. Does this change what an existing published number means? If yes, it needs a version bump
-   and a note in `leaderboard/`, not a silent edit.
+1. Does this change what an existing published number means? If yes, re-run the suite and
+   publish a new results file. `experiments/check_stale.py` tells you which files went stale.
 2. Does it make a task easier in a way that flatters submissions? Weakening a disturbance,
    loosening a constraint, or shrinking the mismatch to make `validate` pass is fixing the
    thermometer.

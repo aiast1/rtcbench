@@ -1,0 +1,92 @@
+[
+  {
+    "model_id": "us.anthropic.claude-opus-5",
+    "task_id": "four_tank_nmp_v1",
+    "slug": "us-anthropic-claude-opus-5",
+    "best_cost": 0.0736521306424717,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 8019,
+    "output_tokens": 51285,
+    "seconds": 648.8187737000117,
+    "history": [
+      "r1:trunc",
+      "r2:2.04401",
+      "r3:0.07365"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "us.anthropic.claude-opus-5",
+    "task_id": "unstable_cstr_v1",
+    "slug": "us-anthropic-claude-opus-5",
+    "best_cost": 0.006144575993327612,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 8034,
+    "output_tokens": 59205,
+    "seconds": 778.4206543999899,
+    "history": [
+      "r1:trunc",
+      "r2:8.01911",
+      "r3:0.00614"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "us.anthropic.claude-opus-5",
+    "task_id": "van_de_vusse_v1",
+    "slug": "us-anthropic-claude-opus-5",
+    "best_cost": 0.028600899246811095,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 9827,
+    "output_tokens": 63165,
+    "seconds": 848.1482042999996,
+    "history": [
+      "r1:trunc",
+      "r2:0.03381",
+      "r3:0.02860"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "us.anthropic.claude-opus-5",
+    "task_id": "column_a_v1",
+    "slug": "us-anthropic-claude-opus-5",
+    "best_cost": 0.2345253681036322,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 18788,
+    "output_tokens": 79356,
+    "seconds": 1085.4430743999837,
+    "history": [
+      "r1:0.23453",
+      "r2:2.15936",
+      "r3:4.04938"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "us.anthropic.claude-opus-5",
+    "task_id": "deadtime_process_v1",
+    "slug": "us-anthropic-claude-opus-5",
+    "best_cost": 0.0267791055103621,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 15914,
+    "output_tokens": 95033,
+    "seconds": 1292.4089659999881,
+    "history": [
+      "r1:10.00000",
+      "r2:0.02678",
+      "r3:trunc"
+    ],
+    "error": "",
+    "token_cap": 32768
+  }
+]

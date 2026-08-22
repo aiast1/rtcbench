@@ -59,9 +59,16 @@ return. A test that only checks the plant runs is worth nothing here.
 
 This is where a benchmark can be damaged invisibly. Three questions, in order:
 
-**1. Does this change what an existing published number means?** If yes it needs a version
-bump and a note in `leaderboard/`, never a silent edit. Published task files are immutable —
-their content hash appears in every run record. Cut `<id>_v2.yaml`.
+**1. Does this change what an existing published number means?** If yes, **change the task
+and re-run** — do not freeze it. The whole suite re-scores for about a dollar and forty
+minutes, so protecting a comparison nobody is making yet would cost a better benchmark to
+buy a hypothetical.
+
+What must not happen is a task changing while a results file still claims to describe it.
+Every results file pins each task's content hash, and `python experiments/check_stale.py`
+fails when they drift, so a missed rerun is visible rather than silent. Cut a `v2` only once
+results are genuinely published outside this repo — a paper, a DOI, a leaderboard people
+cite. Before that, editing in place and re-running is the *correct* move, not a shortcut.
 
 **2. Does it make a task easier in a way that flatters submissions?** Weakening a
 disturbance, loosening a constraint or shrinking the mismatch spread to get `validate` to

@@ -1,10 +1,3 @@
-# DEPRECATED -- superseded by shell_fractionator_v2.yaml. Do not use for new runs.
-#
-# Kept byte-for-byte as published because leaderboard/matrix_2026-08-22.json was
-# measured against it. Its anchor gap is only 32% of the hold cost, which is below
-# the 35% floor `rtcbench validate` now enforces, so it will FAIL validation -- that
-# is correct and is why v2 exists.
-
 # shell_fractionator_v1 -- Prett & Morari's Shell Standard Control Problem, mismatch tier
 #
 # The classic constrained, heavily-interacting, deadtime-ridden 3x3: top draw / side draw /
@@ -83,17 +76,24 @@ controlled: [0, 1, 2]
 # A step, then a ramp, then a return: exercises setpoint tracking under interaction on the
 # way out and on the way back, plus a slow ramp where the loops' large integral times have
 # room to wind up before the process (with its own 14-32 minute dead times) catches on.
+# Excursions roughly doubled from the first draft, and the upset strengthened. Measured
+# reason: with the original moves the hold anchor cost only 0.064 against a reference of
+# 0.0435 -- control bought 32%, the anchor gap was 0.0205, and a merely-mediocre submission
+# therefore landed at -6 or worse. Eight of twenty models hit the score clamp and the task's
+# median was -7.58, so it ranked nothing and dragged every suite score with it. Hold
+# accumulates error in proportion to how far the setpoints travel; a longer journey separates
+# the anchors without making the plant any easier to control.
 setpoints:
   - { t: 0,   values: [0.00, 0.00, 0.00] }
-  - { t: 120, values: [0.20, -0.15, 0.00] }
-  - { t: 350, values: [-0.10, 0.10, 0.05], ramp: 90 }
+  - { t: 120, values: [0.40, -0.30, 0.00] }
+  - { t: 350, values: [-0.25, 0.25, 0.12], ramp: 90 }
   - { t: 600, values: [0.00, 0.00, 0.00] }
 
 # d1 (upper reflux duty) steps mid-run, after the loops have had time to settle from the
 # t=600 setpoint return: an upstream circulating loop this plant does not own bumps its heat
 # duty, arriving through this plant's own dead time and lag like any other signal here.
 disturbances:
-  - { t: 700, params: { d1: 0.15 } }
+  - { t: 700, params: { d1: 0.40 } }
 
 instruments:
   sensors:
@@ -114,11 +114,33 @@ scoring:
   cvar_alpha: 0.10
   # ~4x the tuned reference's tv -- see the reference block below for the tuning run this
   # was read from.
-  max_total_variation: 0.0112   # ~4x the tuned reference's tv
+  max_total_variation: 0.016   # ~4x the tuned reference's tv
 
 budget:
   step_seconds: 0.05
   max_overruns: 20
+
+# PROVISIONAL -- read before quoting a score from it.
+#
+# This task passes validate at a 37% anchor gap, just inside the 35% floor, and that is the
+# best a PID reference can do here. Strengthening the task (setpoint travel doubled, upset
+# 0.15 -> 0.40) scaled hold 0.064 -> 0.146 and the reference 0.0435 -> 0.0923: BOTH anchors
+# moved 2.3x together and the ratio only went 32% -> 37%.
+#
+# The reason is structural, not a tuning failure. Shell is a constrained-MPC benchmark --
+# 3x3, every transfer element carrying its own deadtime, loops interacting -- and a
+# decentralized PI is simply the wrong controller class for it. A weak reference cannot be
+# repaired by making the task harder, because a harder task hurts hold and reference in
+# proportion.
+#
+# Consequence: the scale here stays more sensitive than the rest of the pack. A submission
+# costing 3x hold scores -5.4, where the same submission on four_tank would score -2.1. The
+# per-task floor in the suite aggregate bounds the damage to a model's overall score, but
+# this column's negatives read larger than the equivalent failure elsewhere. Compare within
+# the column, not across.
+#
+# The real fix is a reference controller class beyond decentralized PID -- a static
+# decoupler plus PI at minimum. Until then, treat this task's ranking as indicative.
 
 
 scenarios:

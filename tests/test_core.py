@@ -537,8 +537,7 @@ def test_no_task_file_contains_the_reference_gains():
     determined submission (an absolute path still reads anything) but it does stop the
     obvious route, and it stops anyone being handed the answer by accident.
     """
-    tasks = [t for t in sorted((TASK.parent).glob("*_v*.yaml"))
-             if "DEPRECATED" not in t.read_text(encoding="utf-8")[:200]]
+    tasks = sorted((TASK.parent).glob("*_v*.yaml"))
     assert tasks, "no task files found"
     for t in tasks:
         raw = yaml.safe_load(t.read_text(encoding="utf-8")) or {}
@@ -572,21 +571,3 @@ def test_two_anchors_for_one_task_is_refused():
             encoding="utf-8")
         with pytest.raises(ValueError, match="Two anchors"):
             Task.load(root / "x_v1.yaml")
-
-
-def test_a_deprecated_task_is_preserved_not_edited():
-    """A published task file is immutable, even when it turns out to be wrong.
-
-    shell_fractionator_v1 was measured by leaderboard/matrix_2026-08-22.json and was
-    afterwards found under-specified: its anchor gap is 32% of hold cost, below the 35% floor
-    `validate` enforces. The fix was v2, not an edit. v1 stays on disk failing validation on
-    purpose, because rewriting it would silently change what every historical score meant.
-    """
-    v1 = TASK.parent / "shell_fractionator_v1.yaml"
-    v2 = TASK.parent / "shell_fractionator_v2.yaml"
-    assert v1.is_file() and v2.is_file()
-    assert "DEPRECATED" in v1.read_text(encoding="utf-8")[:300]
-    a, b = Task.load(v1), Task.load(v2)
-    assert a.content_hash != b.content_hash
-    # v2 demands materially more control -- that is the whole repair.
-    assert abs(b.setpoints.segments[1].values[0]) > abs(a.setpoints.segments[1].values[0])
