@@ -57,7 +57,23 @@ task designed so that system identification is genuinely required rather than op
 
 Expect scores to fall sharply. That is the point.
 
-### 4. Fix the difficulty cliff
+### 4. A reference controller class beyond decentralized PID
+
+Every reference anchor in the pack is a bank of independent PI loops, and on one task that
+is demonstrably the wrong class. Shell fractionator is a constrained-MPC benchmark -- 3x3,
+per-element deadtimes, interacting loops -- and its PID reference is only 37% better than
+freezing the actuators, against 94% on four_tank.
+
+That cannot be fixed by making the task harder: strengthening it scaled hold 0.064 -> 0.146
+and the reference 0.0435 -> 0.0923, both by 2.3x, moving the ratio only 32% -> 37%. A harder
+task hurts both anchors in proportion. The anchor is the thing that is wrong.
+
+Wanted, cheapest first: a static decoupler plus PI (little more than a gain matrix inverse),
+then a proper constrained MPC for the tasks that deserve one. The task file carries a
+PROVISIONAL banner until this lands, and `shell_fractionator_v1` should not be quoted as a
+ranking in the meantime.
+
+### 5. Fix the difficulty cliff
 
 Three of 112 submissions beat their task's reference, and on `four_tank_nmp_v1` **nobody**
 did — 8 of 14 models hit the floor. A task where the whole field bottoms out ranks nothing;
