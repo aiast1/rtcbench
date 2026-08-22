@@ -51,15 +51,23 @@ the scored suite rests on self-consistency alone.
 **The problem:** all ten anchors are banks of independent PI loops, and on at least one plant
 that is demonstrably the wrong controller class.
 
-- Reference classes beyond decentralized PID: a static decoupler plus PI first (little more
-  than a gain-matrix inverse), then a constrained MPC where a plant deserves one.
+- Reference classes beyond decentralized PID. **The obvious first attempt is already
+  refuted:** a static decoupler + PI is implemented (`baselines/decoupler.py`) and is WORSE
+  than a tuned PI bank on every plant tried — shell -23%, column_a -13%, four_tank_nmp -12%,
+  with equal per-loop tuning effort. Column A, condition number 273, is the strongest case
+  for decoupling in the pack and the decoupler still loses. The likely reason is that the
+  decoupler inverts a *nominal* gain matrix while every task draws its parameters per
+  scenario, and inverting a matrix you do not have exactly amplifies exactly the directions
+  where the plant responds weakly. What remains is a genuine constrained MPC with deadtime
+  compensation, which is a much larger piece of work than it looked.
 - Anchor health published per task. `validate` already computes the gap-to-hold ratio; it
   belongs in the report next to every score.
 - A human baseline. Two or three real control engineers under the same budget. A benchmark
   with a human reference line is worth several times one without.
 
 **Done looks like:** no task carries a PROVISIONAL banner, and every anchor is the best of a
-class appropriate to its plant.
+class appropriate to its plant. `shell_fractionator` stays provisional until then; the cheap
+fix for it does not exist.
 
 ## M3 — Trustworthy submissions
 
@@ -135,9 +143,9 @@ The next few sessions' worth, inside M1–M3.
 1. **Cantera oracle for the three reacting plants** (`ph_neutralization`, `van_de_vusse`,
    `unstable_cstr`). The highest-value item on the whole list: the only one whose downside is
    "everything measured so far is wrong".
-2. **Static decoupler + PI reference class.** Small, and it un-provisionals
-   `shell_fractionator`, whose PID anchor is only 37% better than doing nothing against
-   four_tank's 94%.
+2. ~~Static decoupler + PI reference class.~~ **Done and refuted** — see M2. It is worse
+   than a tuned PI bank on all three multivariable plants. `shell_fractionator` stays
+   provisional; un-provisionalling it needs a constrained MPC, not a gain-matrix inverse.
 3. **Reference config out of the task file.** An hour, and it closes the exact hole that
    motivated the sandbox — an agent read the gains out of `tasks/four_tank_v1.yaml` and
    reported them as its own tuning.

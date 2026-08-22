@@ -9,12 +9,14 @@ gains, and argue with them.
 
 from __future__ import annotations
 
+from .decoupler import DecoupledPID
 from .hold import Hold
 from .pid import MultiLoopPID, PIDLoop
 
-__all__ = ["Hold", "MultiLoopPID", "PIDLoop", "build_reference", "BUILTINS"]
+__all__ = ["DecoupledPID", "Hold", "MultiLoopPID", "PIDLoop",
+           "build_reference", "BUILTINS"]
 
-BUILTINS = {"hold": Hold, "pid": MultiLoopPID}
+BUILTINS = {"hold": Hold, "pid": MultiLoopPID, "decoupled_pid": DecoupledPID}
 
 
 def build_reference(brief, config):
@@ -25,4 +27,6 @@ def build_reference(brief, config):
         raise ValueError(f"unknown reference controller {kind!r}; have {sorted(BUILTINS)}")
     if kind == "hold":
         return Hold(brief)
+    if kind == "decoupled_pid":
+        return DecoupledPID(brief, **cfg)
     return MultiLoopPID(brief, **cfg)
