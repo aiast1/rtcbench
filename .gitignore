@@ -13,8 +13,17 @@ venv/
 out/
 runs/
 
-# Generated experiment artifacts: model submissions and commissioning logs. The tooling that
-# produces them is tracked; the outputs are reproducible from it and would otherwise bloat
-# history with every rerun. Curated leaderboard results belong in leaderboard/.
+# experiments/agents/ is scratch from the first, superseded agent-tool round.
 experiments/agents/
 experiments/submissions/
+
+# experiments/submissions2/ is NOT ignored, on purpose. Those controller files are the
+# evidence behind every number in leaderboard/ -- with them, anyone can re-score the suite
+# and check the published matrix; without them, the leaderboard asks to be taken on trust.
+# 200 files at ~6 KB is 1.3 MB, which is nothing next to that.
+#
+# (It first landed here by accident, because this file named `submissions/` and the directory
+# was `submissions2/`. Kept deliberately after looking at what it bought.)
+#
+# Run RECORDS -- full (t, y, r, u) traces -- are the genuinely bulky artifact and stay out;
+# they belong in an HF Dataset. See ROADMAP.md, Distribution.
