@@ -18,23 +18,38 @@ Nine plants, 178 tests, two dependencies, no GPU. A full scoring pass runs on a 
 
 ## The current standing
 
-Fourteen models each commissioned a controller for eight plants through one identical
-harness. **[See the results](leaderboard/report.html)** — or the raw
-[matrix](leaderboard/matrix_2026-08-21.json).
+Twenty models each commissioned a controller for ten plants through one identical harness.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="leaderboard/matrix-dark.svg">
+  <img alt="RTCbench suite results: top 12 models across 10 process plants, scored against a well-tuned reference controller" src="leaderboard/matrix-light.svg" width="100%">
+</picture>
+
+Blue beats doing nothing, red is worse than doing nothing, and the rightmost column is the
+suite score. **[The full report](leaderboard/report.html)** has all twenty models, per-cell
+detail and the raw [matrix](leaderboard/matrix_2026-08-22.json).
+
+Read it by **column**, not by row — a plant where most of the field is red is a plant that
+discriminates, and that is more useful than the ranking:
 
 | | |
 |---|---|
-| Leader | **claude-fable-5**, suite **+0.572** |
-| Submissions that beat their task's reference | **3 of 112** |
-| Results worse than doing nothing | **20** |
-| Models that beat the reference on the non-minimum-phase task | **none** |
+| Leader | **claude-fable-5**, suite **+0.553** — its second win, on a changed roster and a changed scoring rule |
+| Hardest column | `four_tank_nmp` — median **−1.88**, and only one model above zero |
+| Easiest | `four_tank_blind` — median **+0.84**, *higher* than the same plant with the model supplied |
+| Best single score | **+1.34**, Fable on `deadtime` — one of few results above a reference |
 
-That last row is the interesting one. `four_tank_nmp_v1` is the same rig as `four_tank_v1`
-with the splitter valves moved so the obvious input/output pairing becomes the wrong one.
-Comparing a model's two scores isolates that single trap: Mistral Large 3 goes **+0.920 →
-−1.000**, Sonnet 5 **+0.974 → −1.000**.
+That third row is the run's most interesting result. `four_tank_blind_v1` is the same rig,
+the same seeds and bit-identical anchors, with only the nominal model withheld. **The median
+effect of removing it is −0.028** — statistically nothing. Four models did better without a
+model, six did worse, ten were unchanged. On this plant, being handed the parameters is worth
+approximately zero, which is not what we expected to find.
 
----
+To regenerate both views after a scoring pass:
+
+```bash
+python experiments/report.py --matrix leaderboard/matrix_<date>.json --out leaderboard/report.html
+```
 
 ## What makes a score here mean something
 

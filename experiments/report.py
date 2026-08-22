@@ -60,10 +60,22 @@ PRETTY = {
     "amazon-nova-pro-v1-0": "Nova Pro",
     "nvidia-nemotron-super-3-120b": "Nemotron Super 3",
     "openai-gpt-oss-120b-1-0": "gpt-oss 120B",
+    "us-anthropic-claude-opus-4-8": "Opus 4.8",
+    "us-openai-gpt-5-6-terra": "GPT-5.6 terra",
+    "us-openai-gpt-5-6-sol": "GPT-5.6 sol",
+    "us-openai-gpt-5-6-luna": "GPT-5.6 luna",
+    "us-xai-grok-4-6": "Grok 4.6",
+    "us-meta-llama4-maverick-17b-instruct-v1-0": "Llama 4 Maverick",
+    "us-meta-llama4-scout-17b-instruct-v1-0": "Llama 4 Scout",
+    "us-deepseek-r1-v1-0": "DeepSeek R1",
+    "qwen-qwen3-next-80b-a3b": "Qwen3 Next 80B",
+    "moonshotai-kimi-k2-5": "Kimi K2.5",
+    "us-writer-palmyra-x5-v1-0": "Palmyra X5",
 }
 
 TASK_LABEL = {
     "four_tank_v1": "Four-tank",
+    "four_tank_blind_v1": "Four-tank BLIND",
     "four_tank_nmp_v1": "Four-tank NMP",
     "column_a_v1": "Column A",
     "ph_neutralization_v1": "pH",
@@ -71,10 +83,12 @@ TASK_LABEL = {
     "van_de_vusse_v1": "Van de Vusse",
     "boiler_drum_v1": "Boiler drum",
     "unstable_cstr_v1": "Unstable CSTR",
+    "shell_fractionator_v1": "Shell fractionator",
 }
 
 TASK_TRAP = {
     "four_tank_v1": "minimum phase; the gentle one",
+    "four_tank_blind_v1": "same rig, model withheld - sysID required",
     "four_tank_nmp_v1": "RHP zero - the obvious pairing is wrong",
     "column_a_v1": "ill-conditioned 41-stage column",
     "ph_neutralization_v1": "gain varies by orders of magnitude",
@@ -82,18 +96,30 @@ TASK_TRAP = {
     "van_de_vusse_v1": "steady-state gain reverses sign",
     "boiler_drum_v1": "inverse response (shrink and swell)",
     "unstable_cstr_v1": "open-loop unstable operating point",
+    "shell_fractionator_v1": "3x3 with per-element deadtimes - UNDER REVIEW",
 }
 
 FLOOR = -1.0
 
 
 def bucket(score: float, arms: int = 5) -> int:
-    """Map a score to a signed ramp index. 0 is the neutral midpoint."""
+    """Map a score to a signed ramp index. 0 is the neutral midpoint.
+
+    The two arms are scaled differently on purpose. Above zero the interesting range is
+    0..~1.2 and a linear split resolves it. Below zero the range now runs to -10 (scores are
+    no longer floored per scenario), so a linear split would put everything from -1 to -10 in
+    the last bucket and waste four fifths of the arm on distinctions nobody makes. The
+    negative arm is therefore logarithmic: -0.2, -0.5, -1, -3, and worse.
+    """
     if abs(score) < 0.02:
         return 0
-    span = 1.15  # a touch past the best observed score, so the top arm is reachable
-    step = min(arms, max(1, int(abs(score) / span * arms) + 1))
-    return step if score > 0 else -step
+    if score > 0:
+        step = min(arms, max(1, int(score / 1.2 * arms) + 1))
+        return step
+    for i, edge in enumerate((0.2, 0.5, 1.0, 3.0)):
+        if -score <= edge:
+            return -(i + 1)
+    return -arms
 
 
 def cell_color(score: float, dark: bool) -> str:
@@ -107,7 +133,8 @@ def cell_color(score: float, dark: bool) -> str:
     return arm[max(0, len(arm) + b)]
 
 
-def render(matrix: dict, task_order: list[str], generated: str) -> str:
+def render(matrix: dict, task_order: list[str], generated: str,
+           source: str = "", caveats: str = "") -> str:
     suite = matrix["suite"]
     per_task = matrix["per_task"]
     models = sorted(suite, key=lambda m: -suite[m])
@@ -164,8 +191,8 @@ def render(matrix: dict, task_order: list[str], generated: str) -> str:
             label = ""
             if s > 1.0:
                 label = f"{s:.2f}"
-            elif s <= FLOOR + 1e-9:
-                label = "floor"
+            elif s <= -3.0:
+                label = f"{s:.0f}"
             tip = (f"{html.escape(name(m))} &middot; {html.escape(TASK_LABEL.get(t, t))}<br>"
                    f"score {s:+.3f}" + (f" &middot; {gated} scenario(s) gated" if gated else ""))
             mark = ' <span class="gate" aria-hidden="true">&#9670;</span>' if gated else ""
@@ -179,14 +206,14 @@ def render(matrix: dict, task_order: list[str], generated: str) -> str:
         )
 
     # ---- legend swatches -------------------------------------------------------
-    legend = []
-    for b, lab in ((-5, "−1.0"), (-3, ""), (-1, ""), (0, "0"),
-                   (1, ""), (3, ""), (5, "+1.1")):
-        v = 0.0 if b == 0 else (b / 5) * 1.1
-        legend.append(
-            f'<div class="sw" style="--c-l:{cell_color(v, False)};'
-            f'--c-d:{cell_color(v, True)}"></div><div class="swl">{lab}</div>'
-        )
+    # All swatches, THEN all labels. Emitting them in pairs made the 7-column grid
+    # interleave the two rows instead of stacking them.
+    steps = [(-6.0, "≤−3"), (-0.9, "−1"), (-0.4, "−0.5"), (0.0, "0"),
+             (0.5, ""), (0.9, ""), (1.15, "+1.2")]
+    legend = [
+        f'<div class="sw" style="--c-l:{cell_color(v, False)};--c-d:{cell_color(v, True)}"></div>'
+        for v, _ in steps
+    ] + [f'<div class="swl">{lab}</div>' for _, lab in steps]
 
     # ---- table view ------------------------------------------------------------
     thead = "".join(f"<th>{html.escape(TASK_LABEL.get(t, t))}</th>" for t in tasks)
@@ -200,6 +227,8 @@ def render(matrix: dict, task_order: list[str], generated: str) -> str:
 
     return TEMPLATE.format(
         generated=html.escape(generated),
+        source=html.escape(source),
+        caveats=caveats,
         champion=html.escape(name(champion)),
         champion_score=f"{suite[champion]:+.3f}",
         n_models=len(models),
@@ -301,7 +330,8 @@ family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
           font-variant-numeric:tabular-nums; color:var(--text-secondary);
           font-weight:500; }}
 
-  .hm {{ border-collapse:separate; border-spacing:2px; width:100%; margin-top:6px; }}
+  .hmwrap {{ overflow-x:auto; margin-top:6px; padding-bottom:4px; }}
+  .hm {{ border-collapse:separate; border-spacing:2px; min-width:900px; }}
   .hm th {{ font-weight:500; font-size:11px; color:var(--text-secondary);
              font-family:var(--font-mono); letter-spacing:0.02em; }}
   /* One display declaration, not two -- an earlier draft set block then flex on the same
@@ -393,12 +423,14 @@ family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
   one scenario was gated outright &mdash; a safety-envelope breach or an actuator worn out by
   chattering. Read the columns: a plant where most of the field is red is a plant that
   works.</p>
+  <div class="hmwrap">
   <table class="hm">
     <thead><tr><th></th>{head}</tr></thead>
     <tbody>
     {grid}
     </tbody>
   </table>
+  </div>
   <div class="legend">{legend}</div>
   <div class="legkey">&#9670; at least one scenario gated on safety or actuator duty</div>
 
@@ -411,12 +443,10 @@ family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
   </details>
 
   <footer>
-    Generated {generated} from <code>leaderboard/matrix_2026-08-21.json</code>.
+    Generated {generated} from <code>{source}</code>.
     Every model was given the same brief, three revision rounds, and feedback on held-out
     scenario seeds; submissions are sealed controller files scored by the ordinary harness.
-    Two caveats recorded at the time: the Claude models ran in a later batch after a
-    parameter bug was fixed, and Opus 5 is absent rather than zero &mdash; Bedrock returned
-    an access denial for it on this account.
+    {caveats}
   </footer>
 
   <!-- Inside .viz-root on purpose: the tokens are scoped to it, and a tooltip parked
@@ -451,12 +481,19 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--matrix", default=str(ROOT / "leaderboard" / "matrix_2026-08-21.json"))
     ap.add_argument("--out", default=str(ROOT / "out" / "report.html"))
-    ap.add_argument("--generated", default="2026-08-21")
+    ap.add_argument("--generated", default="")
+    ap.add_argument("--caveats", default="",
+                    help="run-specific caveats for the footer. Stale ones are worse than "
+                         "none: an earlier report carried the previous run's caveats and "
+                         "told readers a model was absent when it was present.")
     args = ap.parse_args(argv)
 
     matrix = json.loads(Path(args.matrix).read_text(encoding="utf-8"))
     order = list(TASK_LABEL)
-    page = render(matrix, order, args.generated)
+    page = render(matrix, order, args.generated,
+                  source=Path(args.matrix).as_posix().split("/")[-2:] and
+                         "/".join(Path(args.matrix).as_posix().split("/")[-2:]),
+                  caveats=args.caveats)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(page, encoding="utf-8")
@@ -466,3 +503,79 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+# -- static SVG, for a README --------------------------------------------------------
+
+def _esc(t: str) -> str:
+    return t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def matrix_svg(matrix: dict, task_order: list[str], dark: bool = False,
+               top: int = 12) -> str:
+    """Render the matrix as a standalone SVG a README can embed.
+
+    GitHub will not run the HTML report — no scripts, no external CSS — but it renders SVG
+    in an <img>, and a <picture> element picks light or dark from the reader's theme. So the
+    same data gets a second, dumber rendering rather than a link nobody clicks.
+
+    Theming is baked in per file rather than done with a CSS media query inside the SVG:
+    GitHub proxies images through camo, and a media query inside a proxied SVG does not see
+    the reader's theme. Two files and a <picture> is the thing that actually works.
+    """
+    suite = matrix["suite"]
+    per_task = matrix["per_task"]
+    models = sorted(suite, key=lambda m: -suite[m])[:top]
+    tasks = [t for t in task_order if t in per_task]
+
+    fg = "#e8eaed" if dark else "#1a1a19"
+    muted = "#9a9a94" if dark else "#6b6a66"
+    bg = "#14171a" if dark else "#fcfcfb"
+    grid = "#2a2e33" if dark else "#e8e7e3"
+
+    label_w, cell_w, cell_h, gap = 132, 60, 22, 2
+    head_h, top_pad = 78, 34
+    width = label_w + len(tasks) * (cell_w + gap) + 76
+    height = top_pad + head_h + len(models) * (cell_h + gap) + 46
+
+    o = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+         f'viewBox="0 0 {width} {height}" font-family="ui-monospace,SFMono-Regular,'
+         f'Menlo,Consolas,monospace">',
+         f'<rect width="{width}" height="{height}" fill="{bg}"/>',
+         f'<text x="14" y="20" font-size="13" font-weight="600" fill="{fg}">'
+         f'RTCbench — suite results</text>',
+         f'<text x="14" y="{top_pad + 2}" font-size="9.5" fill="{muted}">'
+         f'0 = actuators frozen · 1 = well-tuned reference · higher is better</text>']
+
+    for j, t in enumerate(tasks):
+        x = label_w + j * (cell_w + gap) + cell_w / 2
+        y = top_pad + head_h - 8
+        o.append(f'<text x="{x:.0f}" y="{y}" font-size="9" fill="{muted}" '
+                 f'transform="rotate(-38 {x:.0f} {y})">'
+                 f'{_esc(TASK_LABEL.get(t, t))}</text>')
+
+    for i, m in enumerate(models):
+        y = top_pad + head_h + i * (cell_h + gap)
+        o.append(f'<text x="{label_w - 8}" y="{y + 15}" font-size="10.5" fill="{fg}" '
+                 f'text-anchor="end">{_esc(PRETTY.get(m, m))}</text>')
+        for j, t in enumerate(tasks):
+            e = per_task[t].get(m, {})
+            s = e.get("score")
+            x = label_w + j * (cell_w + gap)
+            if s is None:
+                o.append(f'<rect x="{x}" y="{y}" width="{cell_w}" height="{cell_h}" '
+                         f'rx="2" fill="{grid}"/>')
+                continue
+            o.append(f'<rect x="{x}" y="{y}" width="{cell_w}" height="{cell_h}" rx="2" '
+                     f'fill="{cell_color(s, dark)}"/>')
+            shown = f"{s:.2f}" if -3 < s <= 1.5 else f"{s:.0f}"
+            o.append(f'<text x="{x + cell_w/2:.0f}" y="{y + 15}" font-size="8.5" '
+                     f'fill="{fg}" text-anchor="middle" opacity="0.85">{shown}</text>')
+        o.append(f'<text x="{label_w + len(tasks)*(cell_w+gap) + 8}" y="{y + 15}" '
+                 f'font-size="10" font-weight="600" fill="{fg}">{suite[m]:+.3f}</text>')
+
+    o.append(f'<text x="{label_w}" y="{height - 16}" font-size="9" fill="{muted}">'
+             f'top {len(models)} of {len(suite)} models · rightmost column is the suite '
+             f'score · full results in leaderboard/report.html</text>')
+    o.append("</svg>")
+    return "".join(o)
