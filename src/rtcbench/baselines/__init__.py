@@ -10,13 +10,15 @@ gains, and argue with them.
 from __future__ import annotations
 
 from .decoupler import DecoupledPID
+from .dmc import DMC
 from .hold import Hold
 from .pid import MultiLoopPID, PIDLoop
 
-__all__ = ["DecoupledPID", "Hold", "MultiLoopPID", "PIDLoop",
+__all__ = ["DMC", "DecoupledPID", "Hold", "MultiLoopPID", "PIDLoop",
            "build_reference", "BUILTINS"]
 
-BUILTINS = {"hold": Hold, "pid": MultiLoopPID, "decoupled_pid": DecoupledPID}
+BUILTINS = {"hold": Hold, "pid": MultiLoopPID, "decoupled_pid": DecoupledPID,
+            "dmc": DMC}
 
 
 def build_reference(brief, config):
@@ -29,4 +31,6 @@ def build_reference(brief, config):
         return Hold(brief)
     if kind == "decoupled_pid":
         return DecoupledPID(brief, **cfg)
+    if kind == "dmc":
+        return DMC(brief, **cfg)
     return MultiLoopPID(brief, **cfg)

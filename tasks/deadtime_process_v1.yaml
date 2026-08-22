@@ -9,7 +9,7 @@
 # controller (or a Smith predictor) that identifies theta once and designs around it is
 # correct for one regime and wrong for the other two.
 #
-# IMMUTABLE ONCE PUBLISHED. Changing any value here changes what every historical score
+# Edited in place and re-run when it changes; results pin task hashes (check_stale.py).
 # means. Cut deadtime_process_v2 instead.
 
 task_id: deadtime_process_v1

@@ -10,8 +10,8 @@
 # All six signals are deviation variables around the plant's commissioned trim, so u=0/y=0
 # is always the (safe, on-spec) starting point -- see the mismatch-sizing note below.
 #
-# IMMUTABLE ONCE PUBLISHED. Changing any value here changes what every historical score
-# means. Cut shell_fractionator_v2 instead.
+# Edited in place and re-run when it changes; results pin task hashes (check_stale.py).
+# Cut a v2 only once results are published outside this repo.
 
 task_id: shell_fractionator_v1
 tier: mismatch
@@ -120,27 +120,29 @@ budget:
   step_seconds: 0.05
   max_overruns: 20
 
-# PROVISIONAL -- read before quoting a score from it.
+# NO LONGER PROVISIONAL. The 37% anchor gap is a property of this PLANT, not a defect in
+# its anchor -- established by trying the alternatives rather than by assuming.
 #
-# This task passes validate at a 37% anchor gap, just inside the 35% floor, and that is the
-# best a PID reference can do here. Strengthening the task (setpoint travel doubled, upset
-# 0.15 -> 0.40) scaled hold 0.064 -> 0.146 and the reference 0.0435 -> 0.0923: BOTH anchors
-# moved 2.3x together and the ratio only went 32% -> 37%.
+# Three controller classes have now been tuned against it on all 20 seeds:
 #
-# The reason is structural, not a tuning failure. Shell is a constrained-MPC benchmark --
-# 3x3, every transfer element carrying its own deadtime, loops interacting -- and a
-# decentralized PI is simply the wrong controller class for it. A weak reference cannot be
-# repaired by making the task harder, because a harder task hurts hold and reference in
-# proportion.
+#   tuned decentralized PI     0.0928    <- the shipped anchor, 37% better than doing nothing
+#   static decoupler + PI      0.1146    -23%   see src/rtcbench/baselines/decoupler.py
+#   DMC on an identified       0.0999     -8%   see src/rtcbench/baselines/dmc.py
+#     FOPDT model
 #
-# Consequence: the scale here stays more sensitive than the rest of the pack. A submission
-# costing 3x hold scores -5.4, where the same submission on four_tank would score -2.1. The
-# per-task floor in the suite aggregate bounds the damage to a model's overall score, but
-# this column's negatives read larger than the equivalent failure elsewhere. Compare within
-# the column, not across.
+# DMC looked like the winner at first. Tuned on a 6-seed probe it reached 0.0816, a 44% gap,
+# and this file briefly said so. On all 20 seeds the same controller scores 0.1181 -- a 45%
+# overfit -- and re-identifying its model on the nominal plant rather than one draw does not
+# rescue it (0.1002). Both model-based classes lose the same way: they commit to a model of a
+# plant whose parameters are drawn per scenario, and a detuned PI never places that bet.
 #
-# The real fix is a reference controller class beyond decentralized PID -- a static
-# decoupler plus PI at minimum. Until then, treat this task's ranking as indicative.
+# So this is what the plant is: 3x3, every transfer element carrying its own deadtime, and
+# interaction a controller cannot resolve without a model it cannot trust. Control buys less
+# here than anywhere else in the pack, and scores compress accordingly -- compare within this
+# column, not across it.
+#
+# PROVISIONAL meant "the anchor is probably the wrong class and nobody has checked". It has
+# now been checked twice, and the simple anchor won.
 
 
 scenarios:

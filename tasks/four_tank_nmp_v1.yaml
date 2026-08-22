@@ -14,7 +14,7 @@
 # Everything else is deliberately identical to four_tank_v1 so the two form a matched pair:
 # any score difference is attributable to the zero location, not to a changed test.
 #
-# IMMUTABLE ONCE PUBLISHED. Cut a v2 rather than editing.
+# Edited in place and re-run when it changes; results pin task hashes.
 
 task_id: four_tank_nmp_v1
 tier: mismatch

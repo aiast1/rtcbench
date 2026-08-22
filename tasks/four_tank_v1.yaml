@@ -5,7 +5,7 @@
 # pipeline honestly, not to be hard. The non-minimum-phase sibling (four_tank_nmp_v1) is
 # where the diagonal pairing stops working and the task gets interesting.
 #
-# IMMUTABLE ONCE PUBLISHED. Changing any value here changes what every historical score
+# Edited in place and re-run when it changes; results pin task hashes (check_stale.py).
 # means. Cut four_tank_v2 instead.
 
 task_id: four_tank_v1

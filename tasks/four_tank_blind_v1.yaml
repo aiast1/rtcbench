@@ -20,7 +20,7 @@
 # The anchors are unchanged by construction: the reference is a fixed-gain PI that never
 # reads the brief, so `validate` passes on exactly the numbers four_tank_v1 does.
 #
-# IMMUTABLE ONCE PUBLISHED. Cut a v2 rather than editing.
+# Edited in place and re-run when it changes; results pin task hashes.
 
 task_id: four_tank_blind_v1
 tier: blind

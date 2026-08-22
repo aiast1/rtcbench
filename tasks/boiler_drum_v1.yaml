@@ -7,7 +7,7 @@
 # industry does — feeding the measured steam flow forward, so the feedwater does not wait
 # for a transmitter that lies during exactly the transients that matter.
 #
-# IMMUTABLE ONCE PUBLISHED. Changing any value here changes what every historical score
+# Edited in place and re-run when it changes; results pin task hashes (check_stale.py).
 # means. Cut boiler_drum_v2 instead.
 
 task_id: boiler_drum_v1

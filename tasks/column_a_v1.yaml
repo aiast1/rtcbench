@@ -13,7 +13,7 @@
 # the pack's other plants — read those as minutes here. The compute budget below is the one
 # quantity that really is in seconds: it is wall clock, not process time.
 #
-# IMMUTABLE ONCE PUBLISHED. Changing any value here changes what every historical score
+# Edited in place and re-run when it changes; results pin task hashes (check_stale.py).
 # means. Cut column_a_v2 instead.
 
 task_id: column_a_v1

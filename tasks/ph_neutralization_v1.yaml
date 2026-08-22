@@ -8,7 +8,7 @@
 # deaf end deliberately -- a task that stayed on one part of the curve would not exercise
 # the only thing this plant is here to exercise.
 #
-# IMMUTABLE ONCE PUBLISHED. Changing any value here changes what every historical score
+# Edited in place and re-run when it changes; results pin task hashes (check_stale.py).
 # means. Cut ph_neutralization_v2 instead.
 
 task_id: ph_neutralization_v1

@@ -8,7 +8,7 @@
 # opposite of the sign of the dynamic gain, so a controller that identifies the loop from a
 # slow test gets the direction backwards.
 #
-# IMMUTABLE ONCE PUBLISHED. Changing any value here changes what every historical score
+# Edited in place and re-run when it changes; results pin task hashes (check_stale.py).
 # means. Cut unstable_cstr_v2 instead.
 
 task_id: unstable_cstr_v1

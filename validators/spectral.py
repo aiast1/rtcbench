@@ -107,3 +107,54 @@ def step_direction(plant_id: str, cfg: dict, actuator: int, channel: int, *,
             early_y = y
     p.close()
     return float(early_y - y0), float(y - y0)
+
+
+# -- FOPDT identification, for building a defensible model-based anchor -------------
+
+
+def fopdt_matrix(plant_id: str, cfg: dict, *, seed: int = 11, bump: float = 0.06,
+                 horizon: int = 400) -> dict:
+    """Fit gain / time-constant / deadtime per (output, input) pair from step tests.
+
+    Everything here comes through `step`, which is what makes it usable by an ANCHOR: a
+    reference controller may only use information a competitor could obtain, and bump tests
+    are explicitly what the brief permits. A model lifted from the plant source would not be
+    a reference, it would be an oracle.
+
+    Deadtime is taken as the first sample whose movement exceeds a small fraction of the
+    final change -- the practical definition, and the one that matters for control, since a
+    response you cannot distinguish from noise is a response you cannot act on.
+    """
+    probe = build_plant({"kind": plant_id, **cfg})
+    probe.reset(seed)
+    u0 = probe.spec.initial_actuation()
+    lo, hi = probe.spec.actuator_lo(), probe.spec.actuator_hi()
+    n_y, n_u = probe.spec.n_y, probe.spec.n_u
+    dt = probe.spec.sample_time
+    probe.close()
+
+    K = np.zeros((n_y, n_u)); TAU = np.zeros((n_y, n_u)); TH = np.zeros((n_y, n_u))
+    for j in range(n_u):
+        delta = bump * (hi[j] - lo[j])
+        p = build_plant({"kind": plant_id, **cfg})
+        y0 = p.reset(seed).y.copy()
+        u = u0.copy()
+        u[j] = float(np.clip(u0[j] + delta, lo[j], hi[j]))
+        traj = np.array([p.step(u).y for _ in range(horizon)])
+        p.close()
+
+        for i in range(n_y):
+            y = traj[:, i] - y0[i]
+            final = float(y[-1])
+            K[i, j] = final / delta
+            if abs(final) < 1e-9:
+                TAU[i, j], TH[i, j] = dt, 0.0
+                continue
+            moved = np.flatnonzero(np.abs(y) > 0.03 * abs(final))
+            k_delay = int(moved[0]) if moved.size else 0
+            TH[i, j] = k_delay * dt
+            # 63.2% of the way to final, measured from the end of the delay.
+            reached = np.flatnonzero(np.abs(y) >= 0.632 * abs(final))
+            k63 = int(reached[0]) if reached.size else horizon - 1
+            TAU[i, j] = max(dt, (k63 - k_delay) * dt)
+    return {"gain": K.tolist(), "tau": TAU.tolist(), "theta": TH.tolist()}

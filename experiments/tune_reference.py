@@ -67,11 +67,12 @@ def tune(task: Task, pairing, seeds, rounds: int = 3, verbose: bool = True):
     # Seed the search from the best single scalar setting so coordinate descent does not
     # start somewhere unstable and immediately wall itself in behind inf.
     #
-    # The coarse sweep is |KP_GRID| x |TI_GRID| ~= 99 ensemble evaluations, which on a
-    # long-horizon task is minutes of wall clock. Run it on a two-seed probe and only then
-    # refine on the full tuning set: it is a ranking pass, not a measurement, and paying
-    # full ensemble cost for it made this command too slow to finish inside an agent's turn
-    # budget -- which is exactly how two tasks ended up shipping with placeholder gains.
+    # The coarse sweep stays on a 2-seed probe: it is a RANKING pass, not a measurement, and
+    # paying full ensemble cost for ~180 evaluations made this command too slow to finish
+    # inside an agent's turn budget -- which is how two tasks once shipped with placeholder
+    # gains. The DESCENT below runs on every seed, because that is the part whose result gets
+    # published, and a descent on a sample overfits: a DMC anchor tuned on 6 seeds scored
+    # 0.0816 on those 6 and 0.1181 on all 20.
     probe = list(seeds[:2]) or list(seeds)
     best = float("inf")
     for k, t in itertools.product(KP_GRID, TI_GRID):
@@ -123,14 +124,14 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", required=True)
     ap.add_argument("--tune-seeds", type=int, nargs="+", default=None,
-                    help="default: the task's first 6 scenario seeds")
+                    help="default: ALL the task's scenario seeds")
     ap.add_argument("--pairing", type=int, nargs="+", default=None)
     ap.add_argument("--apply", action="store_true",
                     help="print a ready-to-paste reference block")
     args = ap.parse_args(argv)
 
     task = Task.load(args.task)
-    seeds = args.tune_seeds or list(task.seeds[:6])
+    seeds = args.tune_seeds or list(task.seeds)
     pairing = args.pairing or list(range(len(task.controlled)))
 
     print(f"tuning {task.task_id}: {len(task.controlled)} loop(s), pairing {pairing}, "

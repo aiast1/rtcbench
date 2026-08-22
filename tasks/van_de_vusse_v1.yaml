@@ -21,7 +21,7 @@
 # in [5, 200] (the tuner's own grid), every (kp, ti) pair with ti <= 20 s scored 2.3-3x worse
 # than doing nothing, regardless of kp; every well-scoring pair had ti >= 30 s.
 #
-# IMMUTABLE ONCE PUBLISHED. Changing any value here changes what every historical score
+# Edited in place and re-run when it changes; results pin task hashes (check_stale.py).
 # means. Cut van_de_vusse_v2 instead.
 
 task_id: van_de_vusse_v1
