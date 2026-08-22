@@ -116,6 +116,19 @@ def cmd_score(args: argparse.Namespace) -> int:
     return 0
 
 
+MIN_ANCHOR_RATIO = 0.35
+"""How much better than doing nothing the reference must be, as a fraction of hold cost.
+
+The check three separate tasks needed and nobody had written. four_tank_v1, van_de_vusse_v1
+and shell_fractionator_v1 each shipped with a gap so narrow that the 0-to-1 scale went
+hypersensitive and an ordinary mediocre submission scored -6 or worse. Shell was the clearest:
+hold 0.064 against a reference of 0.0435, so control bought 32%, and eight of twenty models
+bottomed out at the score clamp on a task that was merely under-specified rather than hard.
+
+0.35 admits every healthy task in the pack and rejects the three that had to be repaired.
+"""
+
+
 def cmd_validate(args: argparse.Namespace) -> int:
     """Check that a task is well-posed before anyone is scored against it.
 
@@ -141,6 +154,8 @@ def cmd_validate(args: argparse.Namespace) -> int:
     ref = {r.seed: r for r in run_ensemble(task, ref_factory, controller_id="reference")}
 
     problems: list[str] = []
+    gaps: list[float] = []
+    holds: list[float] = []
     print("\n  seed        hold      reference  separation")
     for seed in task.seeds:
         h, r = hold[seed], ref[seed]
@@ -161,8 +176,27 @@ def cmd_validate(args: argparse.Namespace) -> int:
         elif sep < 0.02 * h.cost.total:
             flags.append("NARROW")
             problems.append(f"seed {seed}: anchors separated by only {sep:.2e}")
+        gaps.append(sep)
+        holds.append(h.cost.total)
         print(f"  {seed:<10} {h.cost.total:.5f}   {r.cost.total:.5f}    "
               f"{sep:+.5f}  {' '.join(flags)}")
+
+    # The ensemble-level check. A task can pass every per-seed test above and still rank
+    # nothing, because the SCALE is set by the anchor gap rather than by any single seed.
+    if gaps and holds and np.mean(holds):
+        ratio = float(np.mean(gaps) / np.mean(holds))
+        verdict = "ok" if ratio >= MIN_ANCHOR_RATIO else "TOO NARROW"
+        print(f"\n  anchor gap is {ratio * 100:.0f}% of the hold cost  [{verdict}]")
+        if ratio < MIN_ANCHOR_RATIO:
+            print(f"    a submission costing 3x hold would score {(1 - 3.0) / ratio:+.1f} here")
+            problems.append(
+                f"anchor gap is only {ratio * 100:.0f}% of the hold cost (want >= "
+                f"{MIN_ANCHOR_RATIO * 100:.0f}%). The 0-to-1 scale is hypersensitive: an "
+                "ordinary mediocre submission scores in the negative tens and this task's "
+                "column swamps every aggregate it enters. Make the task demand more control "
+                "-- longer setpoint travel, a stronger upset -- and retune. Do NOT fix it by "
+                "weakening the plant."
+            )
 
     if problems:
         print(f"\n  FAIL — {len(problems)} problem(s):")
