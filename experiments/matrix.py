@@ -134,8 +134,17 @@ def main(argv: list[str] | None = None) -> int:
     print("-- = no submission for that task.   ERR = module would not import.")
 
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+    # Pin the exact task versions. Run records already carry a content hash each; the
+    # aggregate did not, so a published leaderboard could not prove which tasks produced it
+    # -- and tasks do change (shell_fractionator_v1 was superseded by v2 within a day).
     Path(args.out).write_text(
-        json.dumps({"suite": suite, "per_task": per_task}, indent=2), encoding="utf-8")
+        json.dumps({
+            "suite": suite,
+            "per_task": per_task,
+            "tasks": {t.task_id: {"content_hash": t.content_hash, "tier": t.tier,
+                                  "seeds": len(t.seeds)} for t in tasks},
+        }, indent=2),
+        encoding="utf-8")
     print(f"\nwritten {args.out}")
     return 0
 

@@ -34,6 +34,17 @@ What the run established about the tasks themselves, which matters more than the
   four_tank_nmp column isolates the wrong-pairing trap on identical hardware: Mistral
   +0.920 -> -1.000, Sonnet +0.974 -> -1.000.
 
+### Superseded task
+
+**The `shell_fractionator` column measured `shell_fractionator_v1`, which has since been
+superseded by `v2`.** v1's anchor gap was only 32% of its hold cost -- control bought too
+little for the 0-to-1 scale to rank with -- so eight of twenty models bottomed out at the
+score clamp on a task that was under-specified rather than hard.
+
+v1 remains on disk byte-for-byte as published, deprecated and failing validation on purpose.
+It was NOT edited: a published task file is immutable, and rewriting one silently changes
+what every historical score meant. Do not compare that column against any future run.
+
 ### Caveats recorded at the time
 
 * **The two Claude models ran in a separate later batch.** Same tasks, harness, seeds,

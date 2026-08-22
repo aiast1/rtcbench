@@ -1,25 +1,18 @@
-# Reference anchor for shell_fractionator_v1.
-#
-# Kept OUT of the task file on purpose. The task file is what a competitor is
-# handed and what a filesystem-capable submission will read; an agent has
-# already lifted these gains from a task file and reported them as its own
-# tuning. Publishing the anchor is right -- an unarguable reference is worse
-# than a weak one -- but publishing it in the competitor's line of sight is not.
-#
-# rtcbench.task loads this automatically; nothing needs to reference it by path.
+# Reference anchor for shell_fractionator_v1 (DEPRECATED).
 
 # Provenance: experiments/tune_reference.py, coordinate descent over (kp, ti, beta)
-# per loop. Best mean cost 0.092274 with zero gated scenarios.
-# Flatness: +C:/Program Files/Git/-25% on kp costs 3.4% to 3.5% -- a broad basin, not a fit to the seeds.
-# Tuned on ALL 20 seeds after the task was strengthened. All three loops want ti=2000s:
-# every element of this transfer-function matrix carries its own deadtime, so integral action
-# has to be slower than the slowest of them. The kp spread (0.2/0.4/1.2) is the loops having
-# genuinely different gains, not a tuning artefact.
+# per loop. Best mean cost 0.043253 with zero gated scenarios.
+# Flatness: +C:/Program Files/Git/-25% on kp costs 1.7% to 3.0% -- a broad basin, not a fit to the seeds.
+# Tuned on ALL 20 scenario seeds, not the usual 6. Tuning on 6 left one of the remaining 14
+# gated -- with three interacting loops and per-element deadtimes, a gain set that is safe on
+# a sample is not necessarily safe on the ensemble. All three loops want ti=2000s: every
+# element of this transfer-function matrix carries its own delay, so integral action has to be
+# slower than the slowest of them.
 # The reference defines 1.0 on this task, so an under-tuned one inflates every score
 # here forever. If a naive PI beats it, the reference is wrong, not the naive PI.
 reference:
   kind: pid
   pairing: [0, 1, 2]
-  kp: [0.2, 0.4, 1.2]
+  kp: [0.2, 0.4, 0.8]
   ti: [2000.0, 2000.0, 2000.0]
   beta: [1.0, 1.0, 1.0]
