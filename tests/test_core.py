@@ -11,6 +11,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import yaml
 
 from rtcbench import (
     Cost,
@@ -526,3 +527,47 @@ def test_core_never_imports_the_validators():
         or "import scipy" in line or "import cantera" in line
     ]
     assert not offenders, f"core must not reach into the validator tree: {offenders}"
+
+
+def test_no_task_file_contains_the_reference_gains():
+    """The anchor lives in tasks/references/, not in the file a competitor is handed.
+
+    An agent with filesystem access read `kp` and `ti` out of a task file and shipped them
+    as its own tuning, scoring exactly +1.000. Splitting the anchor out does not stop a
+    determined submission (an absolute path still reads anything) but it does stop the
+    obvious route, and it stops anyone being handed the answer by accident.
+    """
+    tasks = sorted((TASK.parent).glob("*_v1.yaml"))
+    assert tasks, "no task files found"
+    for t in tasks:
+        raw = yaml.safe_load(t.read_text(encoding="utf-8")) or {}
+        assert "reference" not in raw, (
+            f"{t.name} carries its reference inline; move it to tasks/references/{t.name}"
+        )
+
+
+def test_every_task_has_a_reference_sidecar():
+    for t in sorted((TASK.parent).glob("*_v1.yaml")):
+        side = TASK.parent / "references" / t.name
+        assert side.is_file(), f"{t.name} has no reference anchor in tasks/references/"
+        assert (yaml.safe_load(side.read_text(encoding="utf-8")) or {}).get("reference"), (
+            f"{side.name} has no reference block"
+        )
+
+
+def test_two_anchors_for_one_task_is_refused():
+    """Ambiguity here would silently pick one anchor and re-denominate a task's scores."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        (root / "references").mkdir()
+        body = (TASK.read_text(encoding="utf-8")
+                + "\nreference:\n  kind: pid\n  pairing: [0, 1]\n  kp: [9.0, 9.0]\n"
+                  "  ti: [9.0, 9.0]\n")
+        (root / "x_v1.yaml").write_text(body, encoding="utf-8")
+        (root / "references" / "x_v1.yaml").write_text(
+            "reference:\n  kind: pid\n  pairing: [0, 1]\n  kp: [1.0, 1.0]\n  ti: [1.0, 1.0]\n",
+            encoding="utf-8")
+        with pytest.raises(ValueError, match="Two anchors"):
+            Task.load(root / "x_v1.yaml")

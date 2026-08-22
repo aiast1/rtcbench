@@ -1,0 +1,24 @@
+# Reference anchor for boiler_drum_v1.
+#
+# Kept OUT of the task file on purpose. The task file is what a competitor is
+# handed and what a filesystem-capable submission will read; an agent has
+# already lifted these gains from a task file and reported them as its own
+# tuning. Publishing the anchor is right -- an unarguable reference is worse
+# than a weak one -- but publishing it in the competitor's line of sight is not.
+#
+# rtcbench.task loads this automatically; nothing needs to reference it by path.
+
+# Provenance: experiments/tune_reference.py, coordinate descent over (kp, ti, beta)
+# per loop. Best mean cost 0.047359 with zero gated scenarios.
+# Flatness: +C:/Program Files/Git/-25% on kp costs 5.4% -- a broad basin, not a fit to the seeds.
+# ti=2000s is not a typo. The drum's RHP zero (shrink/swell) caps achievable bandwidth,
+# so the correct integral action is very slow. An earlier tuner whose grid stopped at 200s
+# found NO safe tuning at all and reported the task as impossible.
+# The reference defines 1.0 on this task, so an under-tuned one inflates every score
+# here forever. If a naive PI beats it, the reference is wrong, not the naive PI.
+reference:
+  kind: pid
+  pairing: [0]
+  kp: [0.05]
+  ti: [2000.0]
+  beta: [1.0]

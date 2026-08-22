@@ -105,20 +105,6 @@ budget:
   step_seconds: 0.05
   max_overruns: 20
 
-# Provenance: experiments/tune_reference.py, coordinate descent over (kp, ti, beta)
-# per loop. Best mean cost 0.027152 with zero gated scenarios.
-# Flatness: +C:/Program Files/Git/-25% on kp costs 0.7% to 7.1% -- a broad basin, not a fit to the seeds.
-# Asymmetric by necessity: loop 2 needs ti=5s while loop 1 needs ti=350s. That gap is the
-# van de Vusse gain reversal in the tuning -- the loops sit on opposite sides of it and
-# cannot share a time constant.
-# The reference defines 1.0 on this task, so an under-tuned one inflates every score
-# here forever. If a naive PI beats it, the reference is wrong, not the naive PI.
-reference:
-  kind: pid
-  pairing: [0, 1]
-  kp: [15.0, 8.0]
-  ti: [350.0, 5.0]
-  beta: [0.8, 1.0]
 
 scenarios:
   seeds: [11, 23, 37, 41, 59, 67, 73, 89, 97, 103, 127, 149, 163, 179, 191, 211, 227, 239, 251, 269]

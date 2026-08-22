@@ -103,15 +103,14 @@ scoring:
 
 budget: { step_seconds: 0.05, max_overruns: 20 }
 
-reference:                    # the 1.0 anchor -- see section 3
-  kind: pid
-  pairing: [0]
-  kp: [...]
-  ti: [...]
-
 scenarios:
   seeds: [ ...20 seeds... ]
 ```
+
+The reference anchor does NOT go in this file. It lives in
+`tasks/references/<plant_id>_v1.yaml` and is merged in automatically at load time, because
+the task file is what a competitor is handed and a submission with filesystem access will
+read it. `apply_reference.py` writes to the right place for you.
 
 ### Sizing the mismatch
 

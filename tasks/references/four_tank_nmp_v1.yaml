@@ -1,0 +1,31 @@
+# Reference anchor for four_tank_nmp_v1.
+#
+# Kept OUT of the task file on purpose. The task file is what a competitor is
+# handed and what a filesystem-capable submission will read; an agent has
+# already lifted these gains from a task file and reported them as its own
+# tuning. Publishing the anchor is right -- an unarguable reference is worse
+# than a weak one -- but publishing it in the competitor's line of sight is not.
+#
+# rtcbench.task loads this automatically; nothing needs to reference it by path.
+
+# Provenance: tuned by experiments/tune_reference.py on the first 6 seeds, both pairings
+# searched independently over the same grid.
+#
+#   off-diagonal [1, 0]  ->  mean cost 0.0379   (this block)
+#   diagonal     [0, 1]  ->  mean cost 0.0994   2.6x worse, even fully tuned
+#
+# That gap is the task. The diagonal search also collapsed loop 1 to kp=0.05 with ti=200 --
+# it gave up on that loop entirely rather than fight the interaction, which is the classic
+# signature of a wrong pairing and exactly what a naive submission will do here.
+#
+# Note the gains: kp=0.4 with ti=120 is heavily detuned next to four_tank_v1's kp=1.8/ti=20,
+# and the resulting cost is ~10x higher. That is not a weak reference. The RHP zero imposes
+# a hard bandwidth ceiling, so tuning past it is instability rather than a trade-off, and no
+# submission should be able to beat this by very much. Cost basin is flat to within 1% at
+# +/-25% on kp.
+reference:
+  kind: pid
+  pairing: [1, 0]
+  kp: [0.4, 0.4]
+  ti: [120.0, 120.0]
+  beta: [1.0, 1.0]

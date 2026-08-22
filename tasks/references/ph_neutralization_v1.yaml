@@ -1,0 +1,49 @@
+# Reference anchor for ph_neutralization_v1.
+#
+# Kept OUT of the task file on purpose. The task file is what a competitor is
+# handed and what a filesystem-capable submission will read; an agent has
+# already lifted these gains from a task file and reported them as its own
+# tuning. Publishing the anchor is right -- an unarguable reference is worse
+# than a weak one -- but publishing it in the competitor's line of sight is not.
+#
+# rtcbench.task loads this automatically; nothing needs to reference it by path.
+
+# The 1.0 anchor. Published in full so it can be argued with -- an under-tuned reference
+# inflates every score on this task forever, so how it was obtained is part of the task.
+#
+# Provenance: `python experiments/tune_reference.py --task tasks/ph_neutralization_v1.yaml`
+# proposed kp=2.5 ti=120 (mean cost 0.023626 over the first 6 seeds; any tuning that
+# violates a constraint or exceeds the duty ceiling on any draw scores infinite and cannot
+# win). Its kp/ti grids are coarse near this optimum, so that was refined on a 7x6 grid of
+# kp in [1.2, 4.5] x ti in [45, 200] over the same 6 seeds, which found kp=2.2 ti=90 at
+# 0.022996 -- 2.7% better. beta stayed at 1.0: setpoint weighting below 1 softens the very
+# setpoint moves this task is built around, and every value below 1.0 was worse.
+#
+# Flatness: the basin is broad. kp 1.8-3.0 crossed with ti 70-200 all land within 20% of
+# the optimum, and the tuner's own +/-25%-on-kp probe costs 0.7% to 9.3%. So these gains are
+# a genuine optimum rather than a knife-edge fit to six seeds. Detuning costs: kp=1.2 is
+# +21%, kp=3.5 is +16%, kp=4.5 exceeds the duty ceiling on every draw and scores zero.
+#
+# Why the optimum sits in an uncomfortable middle -- mean |error| in pH, by phase:
+#
+#     kp     shelf 6.5   equivalence 8.2   deaf 9.9   shelf surge   duty gate
+#     1.2      0.040          0.339         0.242        0.155         ok
+#     2.2      0.017          0.362         0.119        0.154         ok      <- reference
+#     3.5      0.007          0.743         0.052        0.112         ok
+#     5.0      0.006          1.079         0.023        0.058       GATED 20/20
+#
+# Every column except the equivalence point wants kp at 5 or above: the shelf improves 7x,
+# the deaf end 10x, the load surge 3x. The equivalence point refuses it -- 3x worse tracking
+# and a limit cycle that blows the duty ceiling on every scenario. There is no fixed gain
+# that is both, which is the whole point of the plant, and 2.2 is where the compromise
+# lands. A controller that varies its gain along the titration curve is not obliged to make
+# that trade.
+#
+# Tuned on the dev seeds it anchors. That is acceptable for a published, inspectable
+# baseline everyone competes against equally, and it is stated here rather than assumed.
+reference:
+  kind: pid
+  pairing: [0]
+  kp: [2.2]
+  ti: [90.0]
+  beta: [1.0]

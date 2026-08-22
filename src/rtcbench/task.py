@@ -122,7 +122,30 @@ class Task:
 
     @staticmethod
     def load(path: str | Path) -> "Task":
-        raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+        """Load a task, merging its reference anchor from ``tasks/references/<name>``.
+
+        The anchor lives in a sibling file rather than in the task itself. It is still
+        published — an anchor nobody can argue with is worse than a weak one — but it is not
+        in the file a competitor is handed, because a submission with filesystem access will
+        read that file. One already did: an agent lifted `kp` and `ti` out of a task and
+        reported them as its own tuning.
+
+        This is a speed bump, not a wall (an absolute path still reads anything), and it is
+        the cheap half of the fix. The other half is that the scored tasks should not be on
+        the scoring machine at all — see the sealed test set in ROADMAP.md M3.
+        """
+        path = Path(path)
+        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+        sidecar = path.parent / "references" / path.name
+        if sidecar.is_file():
+            side = yaml.safe_load(sidecar.read_text(encoding="utf-8")) or {}
+            if "reference" in side:
+                if raw.get("reference"):
+                    raise ValueError(
+                        f"{path.name} defines a reference AND has one in references/. "
+                        "Two anchors for one task is ambiguous; delete the inline one."
+                    )
+                raw["reference"] = side["reference"]
         return Task.from_dict(raw)
 
     @staticmethod

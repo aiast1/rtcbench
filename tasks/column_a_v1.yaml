@@ -143,13 +143,6 @@ budget:
   step_seconds: 0.05
   max_overruns: 20
 
-# The 1.0 anchor, published in full so it can be argued with.
-reference:
-  kind: pid
-  pairing: [0, 1]
-  kp: [1.0, 1.0]
-  ti: [30.0, 30.0]
-  beta: [1.0, 1.0]
 
 scenarios:
   seeds: [11, 23, 37, 41, 59, 67, 73, 89, 97, 103, 127, 149, 163, 179, 191, 211, 227, 239, 251, 269]

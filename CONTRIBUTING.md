@@ -74,7 +74,9 @@ reference gains out of a task file and reported them as its own tuning; the anch
 check in `experiments/leaderboard.py` exists because of that.
 
 If you change a task's scoring weights or disturbances, **you must retune its reference** and
-record the provenance above the `reference:` block. The reference defines 1.0; leaving it
+record the provenance above the `reference:` block in `tasks/references/<task>.yaml` — the
+anchor lives there, not in the task file, so a competitor reading the task does not get
+handed the answer. The reference defines 1.0; leaving it
 stale re-denominates every score on that task.
 
 ---

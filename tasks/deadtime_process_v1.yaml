@@ -94,23 +94,6 @@ budget:
   step_seconds: 0.05
   max_overruns: 20
 
-# The 1.0 anchor. Provenance: experiments/tune_reference.py, coordinate descent over
-# (kp, ti, beta) minimizing mean scenario cost on the first 6 seeds (11, 23, 37, 41, 59, 67),
-# then re-checked on the full 20-seed ensemble (mean cost 0.034578, mean tv 0.00030, 0
-# gated). +/-25% on kp costs 2.7% to 9.2% -- a broad, sound basin, not a knife-edge fit.
-#
-# ti=70 lands well short of the ~200 s deadtime the slow regime produces, and that is the
-# expected shape of a fixed compromise: something that has to survive theta=40s without
-# ringing and theta=200s without crawling is necessarily detuned relative to what either
-# regime alone would tolerate -- see the module docstring in
-# src/rtcbench/plants/deadtime_process.py. That detuning is the point of the task, not a
-# defect in the anchor; do not retune this by weakening the plant's deadtime instead.
-reference:
-  kind: pid
-  pairing: [0]
-  kp: [0.4]
-  ti: [70.0]
-  beta: [1.0]
 
 scenarios:
   seeds: [11, 23, 37, 41, 59, 67, 73, 89, 97, 103, 127, 149, 163, 179, 191, 211, 227, 239, 251, 269]

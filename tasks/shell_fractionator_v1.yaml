@@ -142,21 +142,6 @@ budget:
 # The real fix is a reference controller class beyond decentralized PID -- a static
 # decoupler plus PI at minimum. Until then, treat this task's ranking as indicative.
 
-# Provenance: experiments/tune_reference.py, coordinate descent over (kp, ti, beta)
-# per loop. Best mean cost 0.092274 with zero gated scenarios.
-# Flatness: +C:/Program Files/Git/-25% on kp costs 3.4% to 3.5% -- a broad basin, not a fit to the seeds.
-# Tuned on ALL 20 seeds after the task was strengthened. All three loops want ti=2000s:
-# every element of this transfer-function matrix carries its own deadtime, so integral action
-# has to be slower than the slowest of them. The kp spread (0.2/0.4/1.2) is the loops having
-# genuinely different gains, not a tuning artefact.
-# The reference defines 1.0 on this task, so an under-tuned one inflates every score
-# here forever. If a naive PI beats it, the reference is wrong, not the naive PI.
-reference:
-  kind: pid
-  pairing: [0, 1, 2]
-  kp: [0.2, 0.4, 1.2]
-  ti: [2000.0, 2000.0, 2000.0]
-  beta: [1.0, 1.0, 1.0]
 
 scenarios:
   seeds: [11, 23, 37, 41, 59, 67, 73, 89, 97, 103, 127, 149, 163, 179, 191, 211, 227, 239, 251, 269]

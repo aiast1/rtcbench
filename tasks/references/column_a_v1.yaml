@@ -1,0 +1,17 @@
+# Reference anchor for column_a_v1.
+#
+# Kept OUT of the task file on purpose. The task file is what a competitor is
+# handed and what a filesystem-capable submission will read; an agent has
+# already lifted these gains from a task file and reported them as its own
+# tuning. Publishing the anchor is right -- an unarguable reference is worse
+# than a weak one -- but publishing it in the competitor's line of sight is not.
+#
+# rtcbench.task loads this automatically; nothing needs to reference it by path.
+
+# The 1.0 anchor, published in full so it can be argued with.
+reference:
+  kind: pid
+  pairing: [0, 1]
+  kp: [1.0, 1.0]
+  ti: [30.0, 30.0]
+  beta: [1.0, 1.0]

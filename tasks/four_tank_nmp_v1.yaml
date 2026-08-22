@@ -79,27 +79,6 @@ budget:
   step_seconds: 0.05
   max_overruns: 20
 
-# Provenance: tuned by experiments/tune_reference.py on the first 6 seeds, both pairings
-# searched independently over the same grid.
-#
-#   off-diagonal [1, 0]  ->  mean cost 0.0379   (this block)
-#   diagonal     [0, 1]  ->  mean cost 0.0994   2.6x worse, even fully tuned
-#
-# That gap is the task. The diagonal search also collapsed loop 1 to kp=0.05 with ti=200 --
-# it gave up on that loop entirely rather than fight the interaction, which is the classic
-# signature of a wrong pairing and exactly what a naive submission will do here.
-#
-# Note the gains: kp=0.4 with ti=120 is heavily detuned next to four_tank_v1's kp=1.8/ti=20,
-# and the resulting cost is ~10x higher. That is not a weak reference. The RHP zero imposes
-# a hard bandwidth ceiling, so tuning past it is instability rather than a trade-off, and no
-# submission should be able to beat this by very much. Cost basin is flat to within 1% at
-# +/-25% on kp.
-reference:
-  kind: pid
-  pairing: [1, 0]
-  kp: [0.4, 0.4]
-  ti: [120.0, 120.0]
-  beta: [1.0, 1.0]
 
 scenarios:
   seeds: [11, 23, 37, 41, 59, 67, 73, 89, 97, 103, 127, 149, 163, 179, 191, 211, 227, 239, 251, 269]

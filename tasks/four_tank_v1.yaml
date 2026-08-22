@@ -89,26 +89,6 @@ budget:
   step_seconds: 0.05
   max_overruns: 20
 
-# The 1.0 anchor. Published in full so it can be argued with — an under-tuned reference
-# inflates every score on this task, so how it was obtained is part of the task, not a
-# footnote.
-#
-# Provenance: coordinate descent over (kp, ti, beta) per loop, minimizing mean scenario cost
-# on the first 6 seeds, then re-checked on all 20. The first draft of this file carried
-# kp=[1.50,1.35] ti=[30,40] by hand and was beaten by the naive example submission in
-# examples/pi_controller.py — which is exactly the failure the anchor is supposed to make
-# impossible, so it was retuned. The cost surface is flat across kp 1.8-2.2 and ti 20-25
-# (<1% spread), so these gains are a genuine optimum rather than a knife-edge fit; pushing
-# to kp=3.0 is 23% worse and nearly doubles valve movement.
-#
-# Tuned on the dev seeds it anchors. That is acceptable for a published, inspectable
-# baseline everyone competes against equally, and it is stated here rather than assumed.
-reference:
-  kind: pid
-  pairing: [0, 1]
-  kp: [2.0, 2.0]
-  ti: [20.0, 20.0]
-  beta: [1.0, 1.0]
 
 scenarios:
   seeds: [11, 23, 37, 41, 59, 67, 73, 89, 97, 103, 127, 149, 163, 179, 191, 211, 227, 239, 251, 269]
