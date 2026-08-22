@@ -1,90 +1,360 @@
 [
   {
-    "model_id": "us.anthropic.claude-opus-5",
-    "task_id": "four_tank_nmp_v1",
-    "slug": "us-anthropic-claude-opus-5",
-    "best_cost": 0.0736521306424717,
+    "model_id": "us.meta.llama4-maverick-17b-instruct-v1:0",
+    "task_id": "shell_fractionator_v1",
+    "slug": "us-meta-llama4-maverick-17b-instruct-v1-0",
+    "best_cost": 0.1534385769208424,
     "best_code": "",
     "rounds_run": 3,
-    "input_tokens": 8019,
-    "output_tokens": 51285,
-    "seconds": 648.8187737000117,
-    "history": [
-      "r1:trunc",
-      "r2:2.04401",
-      "r3:0.07365"
-    ],
-    "error": "",
-    "token_cap": 32768
-  },
-  {
-    "model_id": "us.anthropic.claude-opus-5",
-    "task_id": "unstable_cstr_v1",
-    "slug": "us-anthropic-claude-opus-5",
-    "best_cost": 0.006144575993327612,
-    "best_code": "",
-    "rounds_run": 3,
-    "input_tokens": 8034,
-    "output_tokens": 59205,
-    "seconds": 778.4206543999899,
-    "history": [
-      "r1:trunc",
-      "r2:8.01911",
-      "r3:0.00614"
-    ],
-    "error": "",
-    "token_cap": 32768
-  },
-  {
-    "model_id": "us.anthropic.claude-opus-5",
-    "task_id": "van_de_vusse_v1",
-    "slug": "us-anthropic-claude-opus-5",
-    "best_cost": 0.028600899246811095,
-    "best_code": "",
-    "rounds_run": 3,
-    "input_tokens": 9827,
-    "output_tokens": 63165,
-    "seconds": 848.1482042999996,
-    "history": [
-      "r1:trunc",
-      "r2:0.03381",
-      "r3:0.02860"
-    ],
-    "error": "",
-    "token_cap": 32768
-  },
-  {
-    "model_id": "us.anthropic.claude-opus-5",
-    "task_id": "column_a_v1",
-    "slug": "us-anthropic-claude-opus-5",
-    "best_cost": 0.2345253681036322,
-    "best_code": "",
-    "rounds_run": 3,
-    "input_tokens": 18788,
-    "output_tokens": 79356,
-    "seconds": 1085.4430743999837,
-    "history": [
-      "r1:0.23453",
-      "r2:2.15936",
-      "r3:4.04938"
-    ],
-    "error": "",
-    "token_cap": 32768
-  },
-  {
-    "model_id": "us.anthropic.claude-opus-5",
-    "task_id": "deadtime_process_v1",
-    "slug": "us-anthropic-claude-opus-5",
-    "best_cost": 0.0267791055103621,
-    "best_code": "",
-    "rounds_run": 3,
-    "input_tokens": 15914,
-    "output_tokens": 95033,
-    "seconds": 1292.4089659999881,
+    "input_tokens": 6890,
+    "output_tokens": 1319,
+    "seconds": 8.975681700016139,
     "history": [
       "r1:10.00000",
-      "r2:0.02678",
-      "r3:trunc"
+      "r2:0.15344",
+      "r3:0.18176"
+    ],
+    "error": "",
+    "token_cap": 8192
+  },
+  {
+    "model_id": "us.meta.llama4-scout-17b-instruct-v1:0",
+    "task_id": "shell_fractionator_v1",
+    "slug": "us-meta-llama4-scout-17b-instruct-v1-0",
+    "best_cost": 2.2177372993419846,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 8782,
+    "output_tokens": 3650,
+    "seconds": 18.15744569999515,
+    "history": [
+      "r1:2.23488",
+      "r2:2.21774",
+      "r3:6.09531"
+    ],
+    "error": "",
+    "token_cap": 8192
+  },
+  {
+    "model_id": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "task_id": "shell_fractionator_v1",
+    "slug": "us-anthropic-claude-haiku-4-5-20251001-v1-0",
+    "best_cost": 0.09384493990057716,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 10286,
+    "output_tokens": 4768,
+    "seconds": 31.263737300003413,
+    "history": [
+      "r1:0.11096",
+      "r2:0.09848",
+      "r3:0.09384"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "us.xai.grok-4.6",
+    "task_id": "shell_fractionator_v1",
+    "slug": "us-xai-grok-4-6",
+    "best_cost": 4.257773209941868,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 7984,
+    "output_tokens": 3463,
+    "seconds": 32.85044949999428,
+    "history": [
+      "r1:10.00000",
+      "r2:4.25777",
+      "r3:10.00000"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "us.anthropic.claude-opus-4-8",
+    "task_id": "shell_fractionator_v1",
+    "slug": "us-anthropic-claude-opus-4-8",
+    "best_cost": 0.14892539069140182,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 10668,
+    "output_tokens": 3471,
+    "seconds": 41.25325919999159,
+    "history": [
+      "r1:0.14893",
+      "r2:0.15045",
+      "r3:0.15260"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "qwen.qwen3-next-80b-a3b",
+    "task_id": "shell_fractionator_v1",
+    "slug": "qwen-qwen3-next-80b-a3b",
+    "best_cost": 10.0,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 11642,
+    "output_tokens": 5255,
+    "seconds": 69.21197570001823,
+    "history": [
+      "r1:10.00000",
+      "r2:10.00000",
+      "r3:10.00000"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "qwen.qwen3-coder-next",
+    "task_id": "shell_fractionator_v1",
+    "slug": "qwen-qwen3-coder-next",
+    "best_cost": 0.13935331999822448,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 11101,
+    "output_tokens": 5742,
+    "seconds": 68.35482680000132,
+    "history": [
+      "r1:0.13935",
+      "r2:0.14474",
+      "r3:0.14076"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "mistral.mistral-large-3-675b-instruct",
+    "task_id": "shell_fractionator_v1",
+    "slug": "mistral-mistral-large-3-675b-instruct",
+    "best_cost": 0.1099685438769549,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 8953,
+    "output_tokens": 3182,
+    "seconds": 13.700239900004817,
+    "history": [
+      "r1:10.00000",
+      "r2:0.11934",
+      "r3:0.10997"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "us.openai.gpt-5.6-terra",
+    "task_id": "shell_fractionator_v1",
+    "slug": "us-openai-gpt-5-6-terra",
+    "best_cost": 0.16543357001476686,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 6,
+    "output_tokens": 9334,
+    "seconds": 98.46284809999634,
+    "history": [
+      "r1:0.17136",
+      "r2:0.16604",
+      "r3:0.16543"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "us.deepseek.r1-v1:0",
+    "task_id": "shell_fractionator_v1",
+    "slug": "us-deepseek-r1-v1-0",
+    "best_cost": 0.08932741205519244,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 6934,
+    "output_tokens": 16603,
+    "seconds": 110.65749300000607,
+    "history": [
+      "r1:0.08933",
+      "r2:0.09001",
+      "r3:0.11637"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "zai.glm-5",
+    "task_id": "shell_fractionator_v1",
+    "slug": "zai-glm-5",
+    "best_cost": 0.09480066833527964,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 11936,
+    "output_tokens": 6193,
+    "seconds": 81.46051030000672,
+    "history": [
+      "r1:0.12270",
+      "r2:0.09480",
+      "r3:0.10382"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "minimax.minimax-m2.5",
+    "task_id": "shell_fractionator_v1",
+    "slug": "minimax-minimax-m2-5",
+    "best_cost": 0.09001006481954078,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 8887,
+    "output_tokens": 4769,
+    "seconds": 81.2945563000103,
+    "history": [
+      "r1:0.13245",
+      "r2:0.10201",
+      "r3:0.09001"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "nvidia.nemotron-super-3-120b",
+    "task_id": "shell_fractionator_v1",
+    "slug": "nvidia-nemotron-super-3-120b",
+    "best_cost": 0.11478614250689907,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 6862,
+    "output_tokens": 8103,
+    "seconds": 58.87622229999397,
+    "history": [
+      "r1:unusable",
+      "r2:0.11479",
+      "r3:0.12072"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "google.gemma-3-27b-it",
+    "task_id": "shell_fractionator_v1",
+    "slug": "google-gemma-3-27b-it",
+    "best_cost": 0.1458333769063181,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 8507,
+    "output_tokens": 2747,
+    "seconds": 53.787160399981076,
+    "history": [
+      "r1:0.14583",
+      "r2:0.14583",
+      "r3:0.14583"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "deepseek.v3.2",
+    "task_id": "shell_fractionator_v1",
+    "slug": "deepseek-v3-2",
+    "best_cost": 2.0632741631718607,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 12971,
+    "output_tokens": 8136,
+    "seconds": 160.01934910001,
+    "history": [
+      "r1:10.00000",
+      "r2:10.00000",
+      "r3:2.06327"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "moonshotai.kimi-k2.5",
+    "task_id": "shell_fractionator_v1",
+    "slug": "moonshotai-kimi-k2-5",
+    "best_cost": 0.08033992146553057,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 12582,
+    "output_tokens": 6699,
+    "seconds": 129.51180890001706,
+    "history": [
+      "r1:0.11769",
+      "r2:0.09629",
+      "r3:0.08034"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "us.anthropic.claude-sonnet-5",
+    "task_id": "shell_fractionator_v1",
+    "slug": "us-anthropic-claude-sonnet-5",
+    "best_cost": 0.10013266070177398,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 12409,
+    "output_tokens": 15496,
+    "seconds": 171.42919630001415,
+    "history": [
+      "r1:0.13461",
+      "r2:0.11719",
+      "r3:0.10013"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "us.openai.gpt-5.6-sol",
+    "task_id": "shell_fractionator_v1",
+    "slug": "us-openai-gpt-5-6-sol",
+    "best_cost": 0.11835363490071953,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 6,
+    "output_tokens": 16023,
+    "seconds": 220.22617199999513,
+    "history": [
+      "r1:0.13192",
+      "r2:0.11835",
+      "r3:0.12948"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "us.anthropic.claude-fable-5",
+    "task_id": "shell_fractionator_v1",
+    "slug": "us-anthropic-claude-fable-5",
+    "best_cost": 0.13354987803584092,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 12924,
+    "output_tokens": 14531,
+    "seconds": 247.41385209999862,
+    "history": [
+      "r1:2.09191",
+      "r2:0.14153",
+      "r3:0.13355"
+    ],
+    "error": "",
+    "token_cap": 32768
+  },
+  {
+    "model_id": "us.anthropic.claude-opus-5",
+    "task_id": "shell_fractionator_v1",
+    "slug": "us-anthropic-claude-opus-5",
+    "best_cost": 0.12359799589429554,
+    "best_code": "",
+    "rounds_run": 3,
+    "input_tokens": 9826,
+    "output_tokens": 47749,
+    "seconds": 652.9771133000322,
+    "history": [
+      "r1:trunc",
+      "r2:0.14039",
+      "r3:0.12360"
     ],
     "error": "",
     "token_cap": 32768

@@ -1,0 +1,1698 @@
+{
+  "suite": {
+    "deepseek-v3-2": 0.008528223175243311,
+    "google-gemma-3-27b-it": -0.0571529020388733,
+    "minimax-minimax-m2-5": 0.0005174017739015991,
+    "mistral-mistral-large-3-675b-instruct": -0.1797194910767818,
+    "moonshotai-kimi-k2-5": 0.020036474799755333,
+    "nvidia-nemotron-super-3-120b": -0.4204981158860438,
+    "qwen-qwen3-coder-next": 0.08729570367242612,
+    "qwen-qwen3-next-80b-a3b": 0.000678780800997747,
+    "us-anthropic-claude-fable-5": 0.5531954959915265,
+    "us-anthropic-claude-haiku-4-5-20251001-v1-0": -0.09374682500756701,
+    "us-anthropic-claude-opus-4-8": 0.2632934020904253,
+    "us-anthropic-claude-opus-5": 0.35382282763853096,
+    "us-anthropic-claude-sonnet-5": 0.25650297928520505,
+    "us-deepseek-r1-v1-0": 0.20059848183842605,
+    "us-meta-llama4-maverick-17b-instruct-v1-0": -0.40859216471264215,
+    "us-meta-llama4-scout-17b-instruct-v1-0": -0.2149087362603074,
+    "us-openai-gpt-5-6-sol": 0.33761818822996964,
+    "us-openai-gpt-5-6-terra": 0.2896374168791632,
+    "us-xai-grok-4-6": 0.03530557333613149,
+    "zai-glm-5": 0.129339775989632
+  },
+  "per_task": {
+    "four_tank_v1": {
+      "deepseek-v3-2": {
+        "score": 0.175616160993411,
+        "mean": 0.3860563768215209,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0007958198361353051,
+        "note": ""
+      },
+      "google-gemma-3-27b-it": {
+        "score": -2.2488165114423916e-06,
+        "mean": -3.34100986078792e-07,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 7.291666666666511e-08,
+        "note": ""
+      },
+      "minimax-minimax-m2-5": {
+        "score": 0.69969189732902,
+        "mean": 0.8113969603970002,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0004020990372399196,
+        "note": ""
+      },
+      "mistral-mistral-large-3-675b-instruct": {
+        "score": 0.5238868248119466,
+        "mean": 0.6452022247349058,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0021115921718032416,
+        "note": ""
+      },
+      "moonshotai-kimi-k2-5": {
+        "score": 0.982459347353824,
+        "mean": 0.9894843399935216,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.003366836051064877,
+        "note": ""
+      },
+      "nvidia-nemotron-super-3-120b": {
+        "score": -0.06894152072811881,
+        "mean": 0.19258169372928075,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0006173718444444436,
+        "note": ""
+      },
+      "qwen-qwen3-coder-next": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.0012952319744444398,
+        "note": ""
+      },
+      "qwen-qwen3-next-80b-a3b": {
+        "score": 0.15504420392708657,
+        "mean": 0.6131861567211311,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.001261578999999995,
+        "note": ""
+      },
+      "us-anthropic-claude-fable-5": {
+        "score": 0.8930447828394195,
+        "mean": 0.9524267105323124,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0018372301458318967,
+        "note": ""
+      },
+      "us-anthropic-claude-haiku-4-5-20251001-v1-0": {
+        "score": -4.709124276600392,
+        "mean": -3.291491225931009,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.000537472806590278,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-4-8": {
+        "score": 0.9952703088243491,
+        "mean": 1.0010270274904722,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0017788415366482232,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-5": {
+        "score": 0.9111605861951148,
+        "mean": 0.954600515789678,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0009300430478553619,
+        "note": ""
+      },
+      "us-anthropic-claude-sonnet-5": {
+        "score": 0.8901083515641786,
+        "mean": 0.9287956223013465,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00059292886143709,
+        "note": ""
+      },
+      "us-deepseek-r1-v1-0": {
+        "score": 0.9976303977546255,
+        "mean": 1.0018175784900545,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0025322605555555566,
+        "note": ""
+      },
+      "us-meta-llama4-maverick-17b-instruct-v1-0": {
+        "score": 0.24501950292016322,
+        "mean": 0.41805163748930463,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0008470561041666665,
+        "note": ""
+      },
+      "us-meta-llama4-scout-17b-instruct-v1-0": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 20,
+        "tv": Infinity,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-sol": {
+        "score": 0.9171791695366589,
+        "mean": 0.943580701631228,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0004949919760038386,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-terra": {
+        "score": 0.6220309010139452,
+        "mean": 0.6752365526326871,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00026589297591313036,
+        "note": ""
+      },
+      "us-xai-grok-4-6": {
+        "score": 0.9696286501577883,
+        "mean": 0.9800606168923442,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0009808277242618272,
+        "note": ""
+      },
+      "zai-glm-5": {
+        "score": 0.9868063063707815,
+        "mean": 0.9923340370955909,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.003151746047433286,
+        "note": ""
+      }
+    },
+    "four_tank_blind_v1": {
+      "deepseek-v3-2": {
+        "score": 0.9519682502318043,
+        "mean": 0.966173598485309,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0034773187683492268,
+        "note": ""
+      },
+      "google-gemma-3-27b-it": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 20,
+        "tv": 0.0,
+        "note": ""
+      },
+      "minimax-minimax-m2-5": {
+        "score": -0.08564338627137469,
+        "mean": 0.4232833144329732,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0009559557826190812,
+        "note": ""
+      },
+      "mistral-mistral-large-3-675b-instruct": {
+        "score": 0.3378991247937461,
+        "mean": 0.5067986325917665,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.003344963235672868,
+        "note": ""
+      },
+      "moonshotai-kimi-k2-5": {
+        "score": 0.8875287991943588,
+        "mean": 0.9258377357002814,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.005917074277645854,
+        "note": ""
+      },
+      "nvidia-nemotron-super-3-120b": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 20,
+        "tv": Infinity,
+        "note": ""
+      },
+      "qwen-qwen3-coder-next": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.009872584249383644,
+        "note": ""
+      },
+      "qwen-qwen3-next-80b-a3b": {
+        "score": 0.8923012614605632,
+        "mean": 0.9217316366074847,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0021424235694444465,
+        "note": ""
+      },
+      "us-anthropic-claude-fable-5": {
+        "score": 0.9947756404781042,
+        "mean": 1.000703357727218,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0011992221909383574,
+        "note": ""
+      },
+      "us-anthropic-claude-haiku-4-5-20251001-v1-0": {
+        "score": 0.8877178302601256,
+        "mean": 0.9084859434208079,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.004753367140993654,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-4-8": {
+        "score": 0.9925981612413677,
+        "mean": 0.9976868368002514,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0014818934336395034,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-5": {
+        "score": 0.8575019732312406,
+        "mean": 0.886197321296099,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0012232969028157016,
+        "note": ""
+      },
+      "us-anthropic-claude-sonnet-5": {
+        "score": 0.9290392799936853,
+        "mean": 0.957047569630786,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0015111777243589745,
+        "note": ""
+      },
+      "us-deepseek-r1-v1-0": {
+        "score": 0.3964801225924417,
+        "mean": 0.49368816342663735,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0010207345183576443,
+        "note": ""
+      },
+      "us-meta-llama4-maverick-17b-instruct-v1-0": {
+        "score": -0.2839495302859341,
+        "mean": 0.024065345038128388,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0016970187499999918,
+        "note": ""
+      },
+      "us-meta-llama4-scout-17b-instruct-v1-0": {
+        "score": -1.841869524200348,
+        "mean": -0.1841869524200348,
+        "gated": 18,
+        "crashed": 0,
+        "tv": 0.005437660343750015,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-sol": {
+        "score": 0.838860488145549,
+        "mean": 0.8981340277192384,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00045694884920908135,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-terra": {
+        "score": 0.8337381631062977,
+        "mean": 0.8954838234402442,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00027599084319408773,
+        "note": ""
+      },
+      "us-xai-grok-4-6": {
+        "score": 0.9053385019806061,
+        "mean": 0.9237569234582945,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0014666443802941668,
+        "note": ""
+      },
+      "zai-glm-5": {
+        "score": -0.09396861888126166,
+        "mean": 0.17286089729938686,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.001873117940734674,
+        "note": ""
+      }
+    },
+    "four_tank_nmp_v1": {
+      "deepseek-v3-2": {
+        "score": -8.949986813995334,
+        "mean": -4.746764247914147,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0004565086620481838,
+        "note": ""
+      },
+      "google-gemma-3-27b-it": {
+        "score": -1.601827247243289,
+        "mean": -0.1601827247243289,
+        "gated": 19,
+        "crashed": 0,
+        "tv": 0.0017064699166666679,
+        "note": ""
+      },
+      "minimax-minimax-m2-5": {
+        "score": -0.280304208069579,
+        "mean": -0.0280304208069579,
+        "gated": 19,
+        "crashed": 0,
+        "tv": 0.000945045725964761,
+        "note": ""
+      },
+      "mistral-mistral-large-3-675b-instruct": {
+        "score": 0.0,
+        "mean": 0.026915203714005298,
+        "gated": 19,
+        "crashed": 0,
+        "tv": 0.0009979898135905555,
+        "note": ""
+      },
+      "moonshotai-kimi-k2-5": {
+        "score": -10.0,
+        "mean": -8.183281225335527,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00023414853204777484,
+        "note": ""
+      },
+      "nvidia-nemotron-super-3-120b": {
+        "score": -2.4925805187890795,
+        "mean": -1.1841823971290018,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00014966652108774594,
+        "note": ""
+      },
+      "qwen-qwen3-coder-next": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.0022533612083333343,
+        "note": ""
+      },
+      "qwen-qwen3-next-80b-a3b": {
+        "score": -7.118249893530729,
+        "mean": -3.7268247805327435,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0007220468567134093,
+        "note": ""
+      },
+      "us-anthropic-claude-fable-5": {
+        "score": 0.46029833388605657,
+        "mean": 0.5616892457148593,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0001947646509864886,
+        "note": ""
+      },
+      "us-anthropic-claude-haiku-4-5-20251001-v1-0": {
+        "score": -4.031222780390447,
+        "mean": -2.4642933959091375,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0009511449524157129,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-4-8": {
+        "score": -3.2964922034504256,
+        "mean": -1.4700015175242591,
+        "gated": 5,
+        "crashed": 0,
+        "tv": 0.0002975057199250851,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-5": {
+        "score": -0.46491006475676333,
+        "mean": 0.32506399366575295,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.002038845584037818,
+        "note": ""
+      },
+      "us-anthropic-claude-sonnet-5": {
+        "score": -2.81764066927852,
+        "mean": -0.9036713547201485,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00030882530289966643,
+        "note": ""
+      },
+      "us-deepseek-r1-v1-0": {
+        "score": -2.3182694032012208,
+        "mean": -1.16130631050748,
+        "gated": 3,
+        "crashed": 0,
+        "tv": 0.0005577830611111109,
+        "note": ""
+      },
+      "us-meta-llama4-maverick-17b-instruct-v1-0": {
+        "score": -1.3779112444095944,
+        "mean": -0.2479403760873128,
+        "gated": 12,
+        "crashed": 0,
+        "tv": 0.0003465583333333288,
+        "note": ""
+      },
+      "us-meta-llama4-scout-17b-instruct-v1-0": {
+        "score": -0.5341288246475047,
+        "mean": -0.14523513914891406,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 9.209170138889515e-05,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-sol": {
+        "score": 0.2605908719519437,
+        "mean": 0.5734966157652749,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00032019169619483285,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-terra": {
+        "score": -0.42635293522644824,
+        "mean": 0.2153197518763869,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00014845147366068196,
+        "note": ""
+      },
+      "us-xai-grok-4-6": {
+        "score": -2.167416623489279,
+        "mean": -1.2505757717934278,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.000395968435541247,
+        "note": ""
+      },
+      "zai-glm-5": {
+        "score": -10.0,
+        "mean": -5.60175789603584,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00010484788745198676,
+        "note": ""
+      }
+    },
+    "column_a_v1": {
+      "deepseek-v3-2": {
+        "score": 0.9341587044751387,
+        "mean": 1.0313081140606568,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00021166458966573784,
+        "note": ""
+      },
+      "google-gemma-3-27b-it": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.003916666666666667,
+        "note": ""
+      },
+      "minimax-minimax-m2-5": {
+        "score": 0.5156954063150252,
+        "mean": 0.7642729731648281,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00034233398843750085,
+        "note": ""
+      },
+      "mistral-mistral-large-3-675b-instruct": {
+        "score": -0.38891484293448086,
+        "mean": 0.49406846350445743,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00031393343430644515,
+        "note": ""
+      },
+      "moonshotai-kimi-k2-5": {
+        "score": 1.0320560260609009,
+        "mean": 1.0740419335083962,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00022291866174106454,
+        "note": ""
+      },
+      "nvidia-nemotron-super-3-120b": {
+        "score": -1.4196303775157548,
+        "mean": -0.4010175647343302,
+        "gated": 3,
+        "crashed": 0,
+        "tv": 0.0006649999999999311,
+        "note": ""
+      },
+      "qwen-qwen3-coder-next": {
+        "score": 0.6869360190966053,
+        "mean": 0.9334763663215568,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00037363041020833584,
+        "note": ""
+      },
+      "qwen-qwen3-next-80b-a3b": {
+        "score": 0.7014593650020976,
+        "mean": 0.9515129951982726,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00032623719786458014,
+        "note": ""
+      },
+      "us-anthropic-claude-fable-5": {
+        "score": 1.103413229728194,
+        "mean": 1.2816188392660606,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.001345310757354594,
+        "note": ""
+      },
+      "us-anthropic-claude-haiku-4-5-20251001-v1-0": {
+        "score": 0.9390048514823612,
+        "mean": 1.0279390088224254,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00021927131484452414,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-4-8": {
+        "score": 1.058989069565384,
+        "mean": 1.1237543682619646,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0007916967036885103,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-5": {
+        "score": -0.08278748291214469,
+        "mean": 0.3206530308392055,
+        "gated": 4,
+        "crashed": 0,
+        "tv": 0.001102623438341936,
+        "note": ""
+      },
+      "us-anthropic-claude-sonnet-5": {
+        "score": 0.9296505406003657,
+        "mean": 1.0571846822828252,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00018517044014113696,
+        "note": ""
+      },
+      "us-deepseek-r1-v1-0": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 20,
+        "tv": Infinity,
+        "note": ""
+      },
+      "us-meta-llama4-maverick-17b-instruct-v1-0": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 20,
+        "tv": Infinity,
+        "note": ""
+      },
+      "us-meta-llama4-scout-17b-instruct-v1-0": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.005912580000000001,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-sol": {
+        "score": -0.17756041421769508,
+        "mean": 0.5940552358362486,
+        "gated": 6,
+        "crashed": 0,
+        "tv": 0.0008283573147039869,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-terra": {
+        "score": 0.05642751582016431,
+        "mean": 0.9790507534931573,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00030270749384147464,
+        "note": ""
+      },
+      "us-xai-grok-4-6": {
+        "score": -0.06128394545828188,
+        "mean": 0.45910639512474,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0002582123357176224,
+        "note": ""
+      },
+      "zai-glm-5": {
+        "score": 0.9520650627316858,
+        "mean": 0.9844221809830435,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00026687861736071026,
+        "note": ""
+      }
+    },
+    "ph_neutralization_v1": {
+      "deepseek-v3-2": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 20,
+        "tv": Infinity,
+        "note": ""
+      },
+      "google-gemma-3-27b-it": {
+        "score": -0.020074143746422836,
+        "mean": -0.0025900615853750317,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 1.233625000000038e-06,
+        "note": ""
+      },
+      "minimax-minimax-m2-5": {
+        "score": 0.465960848251109,
+        "mean": 0.5115492948597482,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00015774819245256596,
+        "note": ""
+      },
+      "mistral-mistral-large-3-675b-instruct": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.0019761811142208303,
+        "note": ""
+      },
+      "moonshotai-kimi-k2-5": {
+        "score": 0.8367020460082897,
+        "mean": 0.8678387225267965,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0006359982463316021,
+        "note": ""
+      },
+      "nvidia-nemotron-super-3-120b": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0,
+        "note": ""
+      },
+      "qwen-qwen3-coder-next": {
+        "score": -0.13100800342243998,
+        "mean": -0.020838568918636394,
+        "gated": 15,
+        "crashed": 0,
+        "tv": 0.000774059817679002,
+        "note": ""
+      },
+      "qwen-qwen3-next-80b-a3b": {
+        "score": 0.07290973873985145,
+        "mean": 0.15957268917802822,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00013629266666665874,
+        "note": ""
+      },
+      "us-anthropic-claude-fable-5": {
+        "score": 0.866840323644195,
+        "mean": 0.8959968664040814,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0009108300737773053,
+        "note": ""
+      },
+      "us-anthropic-claude-haiku-4-5-20251001-v1-0": {
+        "score": 0.14917242061172847,
+        "mean": 0.41027973769122295,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0002061530358188121,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-4-8": {
+        "score": 0.8245415752614259,
+        "mean": 0.8559661015451651,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0004500493895240868,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-5": {
+        "score": 0.16480286082374307,
+        "mean": 0.22235731579863396,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 4.831832229054067e-05,
+        "note": ""
+      },
+      "us-anthropic-claude-sonnet-5": {
+        "score": 0.8329842895790733,
+        "mean": 0.871754193038865,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0006260491035334572,
+        "note": ""
+      },
+      "us-deepseek-r1-v1-0": {
+        "score": 0.8868611850345225,
+        "mean": 0.9142516672447224,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0008262020833333337,
+        "note": ""
+      },
+      "us-meta-llama4-maverick-17b-instruct-v1-0": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.0014905144166666665,
+        "note": ""
+      },
+      "us-meta-llama4-scout-17b-instruct-v1-0": {
+        "score": 0.03427186742774045,
+        "mean": 0.04642833756209822,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 2.7263749999995583e-05,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-sol": {
+        "score": 0.804175659559144,
+        "mean": 0.8331479158524813,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0006398956776117459,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-terra": {
+        "score": 0.8351819563611494,
+        "mean": 0.8604046771267099,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00027258631962008356,
+        "note": ""
+      },
+      "us-xai-grok-4-6": {
+        "score": 0.2808604604717626,
+        "mean": 0.40208837166780265,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0009716745842673043,
+        "note": ""
+      },
+      "zai-glm-5": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.000348584074912155,
+        "note": ""
+      }
+    },
+    "deadtime_process_v1": {
+      "deepseek-v3-2": {
+        "score": 0.024155096877938053,
+        "mean": 0.41042674480107844,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0002984102053386779,
+        "note": ""
+      },
+      "google-gemma-3-27b-it": {
+        "score": 0.4485473721742013,
+        "mean": 0.5236321193695573,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0004026792840909108,
+        "note": ""
+      },
+      "minimax-minimax-m2-5": {
+        "score": -0.640699509881103,
+        "mean": -0.4068783608229207,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0003359606888696975,
+        "note": ""
+      },
+      "mistral-mistral-large-3-675b-instruct": {
+        "score": -1.382322009194262,
+        "mean": -1.0377732582743526,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00026265136363636356,
+        "note": ""
+      },
+      "moonshotai-kimi-k2-5": {
+        "score": -0.45774564682903246,
+        "mean": 0.15775690308805415,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0006075385403924072,
+        "note": ""
+      },
+      "nvidia-nemotron-super-3-120b": {
+        "score": -1.0281678283085247,
+        "mean": -0.437039640508312,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0008476058987753797,
+        "note": ""
+      },
+      "qwen-qwen3-coder-next": {
+        "score": 0.4699059968872808,
+        "mean": 0.5688439617954273,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0004415545454545454,
+        "note": ""
+      },
+      "qwen-qwen3-next-80b-a3b": {
+        "score": 0.4399014562332739,
+        "mean": 0.5218817920451267,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0005292198939468416,
+        "note": ""
+      },
+      "us-anthropic-claude-fable-5": {
+        "score": 1.3410331697891502,
+        "mean": 1.5223402706014488,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0004468097039029754,
+        "note": ""
+      },
+      "us-anthropic-claude-haiku-4-5-20251001-v1-0": {
+        "score": 0.3373019078432319,
+        "mean": 0.3611307317688137,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00012886442346804645,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-4-8": {
+        "score": 0.8710246679993552,
+        "mean": 0.9207243176569643,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00035889378875090936,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-5": {
+        "score": 1.1129876481854417,
+        "mean": 1.1883975984818238,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00023371664806914725,
+        "note": ""
+      },
+      "us-anthropic-claude-sonnet-5": {
+        "score": 0.35495567798131666,
+        "mean": 0.4671963867386074,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0005671461761693911,
+        "note": ""
+      },
+      "us-deepseek-r1-v1-0": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 20,
+        "tv": Infinity,
+        "note": ""
+      },
+      "us-meta-llama4-maverick-17b-instruct-v1-0": {
+        "score": -2.61500828001722,
+        "mean": -0.47649624447936373,
+        "gated": 16,
+        "crashed": 0,
+        "tv": 0.0008458806818181817,
+        "note": ""
+      },
+      "us-meta-llama4-scout-17b-instruct-v1-0": {
+        "score": 0.48681763353931296,
+        "mean": 0.6491864844939924,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0005698977272727275,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-sol": {
+        "score": 1.1615789370119352,
+        "mean": 1.2211252402935553,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00023486363636363635,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-terra": {
+        "score": 1.2080106449680033,
+        "mean": 1.4880220234970492,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.000144929723857009,
+        "note": ""
+      },
+      "us-xai-grok-4-6": {
+        "score": 0.3059197352587235,
+        "mean": 0.48032053334871777,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0005806740783408701,
+        "note": ""
+      },
+      "zai-glm-5": {
+        "score": -0.8478109063716586,
+        "mean": -0.5887960832745559,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00042460902846512186,
+        "note": ""
+      }
+    },
+    "van_de_vusse_v1": {
+      "deepseek-v3-2": {
+        "score": -0.0006159808258590011,
+        "mean": -4.815507854323121e-05,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 4.9377072702002877e-08,
+        "note": ""
+      },
+      "google-gemma-3-27b-it": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 20,
+        "tv": Infinity,
+        "note": ""
+      },
+      "minimax-minimax-m2-5": {
+        "score": -1.9844246897474371,
+        "mean": -0.5426094130206656,
+        "gated": 1,
+        "crashed": 0,
+        "tv": 0.0012759457609953712,
+        "note": ""
+      },
+      "mistral-mistral-large-3-675b-instruct": {
+        "score": -10.0,
+        "mean": -7.768688134083986,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 1.9506827350879906e-06,
+        "note": ""
+      },
+      "moonshotai-kimi-k2-5": {
+        "score": -10.0,
+        "mean": -4.954639156154512,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00011795162562893029,
+        "note": ""
+      },
+      "nvidia-nemotron-super-3-120b": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 20,
+        "tv": Infinity,
+        "note": ""
+      },
+      "qwen-qwen3-coder-next": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 20,
+        "tv": Infinity,
+        "note": ""
+      },
+      "qwen-qwen3-next-80b-a3b": {
+        "score": -6.847340278965194,
+        "mean": -1.7377780187520986,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00014496682412350588,
+        "note": ""
+      },
+      "us-anthropic-claude-fable-5": {
+        "score": -0.11470883201880802,
+        "mean": 0.5371887342434103,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 6.852201806364987e-05,
+        "note": ""
+      },
+      "us-anthropic-claude-haiku-4-5-20251001-v1-0": {
+        "score": -0.5677883489182325,
+        "mean": 0.12295070029436868,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0006532464179650954,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-4-8": {
+        "score": -5.99318266158477,
+        "mean": -2.0437477290954975,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00040023742267671916,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-5": {
+        "score": 0.5056639171584315,
+        "mean": 0.8758746854373382,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0003719632887777649,
+        "note": ""
+      },
+      "us-anthropic-claude-sonnet-5": {
+        "score": 0.7665870633456933,
+        "mean": 0.9079750394670907,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00017726609592151756,
+        "note": ""
+      },
+      "us-deepseek-r1-v1-0": {
+        "score": 0.025817207808654714,
+        "mean": 0.29781747712809237,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 3.2040302512620305e-05,
+        "note": ""
+      },
+      "us-meta-llama4-maverick-17b-instruct-v1-0": {
+        "score": -10.0,
+        "mean": -5.532720735759517,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 8.342730034722234e-05,
+        "note": ""
+      },
+      "us-meta-llama4-scout-17b-instruct-v1-0": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 20,
+        "tv": Infinity,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-sol": {
+        "score": -0.2434936699524266,
+        "mean": 0.6063822302909331,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00030063144088013913,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-terra": {
+        "score": 1.032063671908748,
+        "mean": 2.0363307908928228,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00026449324394314854,
+        "note": ""
+      },
+      "us-xai-grok-4-6": {
+        "score": 0.006537966999529187,
+        "mean": 0.45440798447315445,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 8.858377223271902e-05,
+        "note": ""
+      },
+      "zai-glm-5": {
+        "score": 0.10029242810082545,
+        "mean": 0.5243589662834667,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00012185505383385964,
+        "note": ""
+      }
+    },
+    "boiler_drum_v1": {
+      "deepseek-v3-2": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 1.2121687500000885e-05,
+        "note": ""
+      },
+      "google-gemma-3-27b-it": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.00033846153846153846,
+        "note": ""
+      },
+      "minimax-minimax-m2-5": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.0001711538461538461,
+        "note": ""
+      },
+      "mistral-mistral-large-3-675b-instruct": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.002526585629950189,
+        "note": ""
+      },
+      "moonshotai-kimi-k2-5": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.0028084641362545537,
+        "note": ""
+      },
+      "nvidia-nemotron-super-3-120b": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.000263458658103979,
+        "note": ""
+      },
+      "qwen-qwen3-coder-next": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.0013077903846153848,
+        "note": ""
+      },
+      "qwen-qwen3-next-80b-a3b": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.0015146041728075852,
+        "note": ""
+      },
+      "us-anthropic-claude-fable-5": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.0024680964372467105,
+        "note": ""
+      },
+      "us-anthropic-claude-haiku-4-5-20251001-v1-0": {
+        "score": -0.6270131702115317,
+        "mean": -0.06270131702115317,
+        "gated": 18,
+        "crashed": 0,
+        "tv": 0.000428481185928049,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-4-8": {
+        "score": 0.032571911734870666,
+        "mean": 0.27579770153016897,
+        "gated": 1,
+        "crashed": 0,
+        "tv": 0.0007109006995235522,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-5": {
+        "score": 0.5541430981652276,
+        "mean": 0.7434438000704959,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00041651923076923083,
+        "note": ""
+      },
+      "us-anthropic-claude-sonnet-5": {
+        "score": 0.0,
+        "mean": 0.10734711850126658,
+        "gated": 12,
+        "crashed": 0,
+        "tv": 0.0017422304734211933,
+        "note": ""
+      },
+      "us-deepseek-r1-v1-0": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.0025667833200662972,
+        "note": ""
+      },
+      "us-meta-llama4-maverick-17b-instruct-v1-0": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.00091939797008547,
+        "note": ""
+      },
+      "us-meta-llama4-scout-17b-instruct-v1-0": {
+        "score": -8.400790303737167e-06,
+        "mean": -7.5811445457316224e-06,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 6.715149999985763e-07,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-sol": {
+        "score": 0.9606704267904889,
+        "mean": 1.031170356951219,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00028116326468264464,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-terra": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.0012883606020652337,
+        "note": ""
+      },
+      "us-xai-grok-4-6": {
+        "score": 0.0,
+        "mean": 0.06904455464855032,
+        "gated": 16,
+        "crashed": 0,
+        "tv": 0.0005191407401733721,
+        "note": ""
+      },
+      "zai-glm-5": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.00027987289645487487,
+        "note": ""
+      }
+    },
+    "unstable_cstr_v1": {
+      "deepseek-v3-2": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 4,
+        "tv": 0.00395906879119687,
+        "note": ""
+      },
+      "google-gemma-3-27b-it": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0,
+        "note": ""
+      },
+      "minimax-minimax-m2-5": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.0004761904761904761,
+        "note": ""
+      },
+      "mistral-mistral-large-3-675b-instruct": {
+        "score": 0.7299339825609701,
+        "mean": 0.9309478811699321,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.004716989231787913,
+        "note": ""
+      },
+      "moonshotai-kimi-k2-5": {
+        "score": -0.414314196480698,
+        "mean": -0.3198945973466617,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.009337532981028985,
+        "note": ""
+      },
+      "nvidia-nemotron-super-3-120b": {
+        "score": -0.1360396381323189,
+        "mean": -0.09208583134941521,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 8.138083333340499e-05,
+        "note": ""
+      },
+      "qwen-qwen3-coder-next": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.014179999999999995,
+        "note": ""
+      },
+      "qwen-qwen3-next-80b-a3b": {
+        "score": -0.2548282173528952,
+        "mean": -0.03605590211558163,
+        "gated": 17,
+        "crashed": 0,
+        "tv": 0.01646461412628101,
+        "note": ""
+      },
+      "us-anthropic-claude-fable-5": {
+        "score": 0.9872583115689537,
+        "mean": 0.9996815264024885,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.004196238564230286,
+        "note": ""
+      },
+      "us-anthropic-claude-haiku-4-5-20251001-v1-0": {
+        "score": -0.2725128049048653,
+        "mean": -0.04411611264896246,
+        "gated": 16,
+        "crashed": 0,
+        "tv": 0.01668140211640211,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-4-8": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 0,
+        "tv": 0.01855044113927106,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-5": {
+        "score": 0.9796657402950188,
+        "mean": 0.9934647662531317,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0022263687100421634,
+        "note": ""
+      },
+      "us-anthropic-claude-sonnet-5": {
+        "score": -0.13829541021226235,
+        "mean": 0.0038561659693372085,
+        "gated": 14,
+        "crashed": 0,
+        "tv": 0.016182302729729404,
+        "note": ""
+      },
+      "us-deepseek-r1-v1-0": {
+        "score": -0.11766768983691905,
+        "mean": 0.01066688797350929,
+        "gated": 13,
+        "crashed": 0,
+        "tv": 0.0036797051351497067,
+        "note": ""
+      },
+      "us-meta-llama4-maverick-17b-instruct-v1-0": {
+        "score": -0.04699161976065107,
+        "mean": -0.02962819033800244,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 2.7122407407431286e-05,
+        "note": ""
+      },
+      "us-meta-llama4-scout-17b-instruct-v1-0": {
+        "score": -0.1360396381323189,
+        "mean": -0.09431059223373874,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 8.139444444451612e-05,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-sol": {
+        "score": -0.14581958652590213,
+        "mean": 0.5544603408045836,
+        "gated": 7,
+        "crashed": 0,
+        "tv": 0.007239148087868128,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-terra": {
+        "score": -0.2647257491602269,
+        "mean": -0.042170522875292854,
+        "gated": 12,
+        "crashed": 0,
+        "tv": 0.016076581896733267,
+        "note": ""
+      },
+      "us-xai-grok-4-6": {
+        "score": -0.0539456360488129,
+        "mean": 0.004399036966865978,
+        "gated": 13,
+        "crashed": 0,
+        "tv": 0.011226243156653668,
+        "note": ""
+      },
+      "zai-glm-5": {
+        "score": 0.9711760358501048,
+        "mean": 0.9908022031909309,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.003428206113089839,
+        "note": ""
+      }
+    },
+    "shell_fractionator_v1": {
+      "deepseek-v3-2": {
+        "score": -3.1511573442136367,
+        "mean": 0.2803676980810412,
+        "gated": 2,
+        "crashed": 0,
+        "tv": 0.0020419306131649467,
+        "note": ""
+      },
+      "google-gemma-3-27b-it": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0,
+        "note": ""
+      },
+      "minimax-minimax-m2-5": {
+        "score": 0.3304729700659184,
+        "mean": 0.7826588611362533,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.004084658182803928,
+        "note": ""
+      },
+      "mistral-mistral-large-3-675b-instruct": {
+        "score": -3.241233902819542,
+        "mean": -0.14041502425644845,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.002369680258115687,
+        "note": ""
+      },
+      "moonshotai-kimi-k2-5": {
+        "score": -0.6663216273100895,
+        "mean": 0.7109315540653433,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0011102316731870347,
+        "note": ""
+      },
+      "nvidia-nemotron-super-3-120b": {
+        "score": -2.4782565767289135,
+        "mean": -0.09180723736869156,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0007300411023965142,
+        "note": ""
+      },
+      "qwen-qwen3-coder-next": {
+        "score": -0.15287697583718507,
+        "mean": 0.06233892206472898,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00023198361806158987,
+        "note": ""
+      },
+      "qwen-qwen3-next-80b-a3b": {
+        "score": 0.0,
+        "mean": 0.0,
+        "gated": 20,
+        "crashed": 20,
+        "tv": Infinity,
+        "note": ""
+      },
+      "us-anthropic-claude-fable-5": {
+        "score": -8.585469624254278,
+        "mean": -0.9969659944313272,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.002151588941583469,
+        "note": ""
+      },
+      "us-anthropic-claude-haiku-4-5-20251001-v1-0": {
+        "score": 0.2166490637615119,
+        "mean": 0.6974504611468715,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.004616323725324291,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-4-8": {
+        "score": -0.14206167372249975,
+        "mean": -0.04044153416140861,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.00021507337444628144,
+        "note": ""
+      },
+      "us-anthropic-claude-opus-5": {
+        "score": -5.56394044324471,
+        "mean": -0.35897338193225736,
+        "gated": 1,
+        "crashed": 0,
+        "tv": 0.0010945884048043828,
+        "note": ""
+      },
+      "us-anthropic-claude-sonnet-5": {
+        "score": -6.094701934972297,
+        "mean": -0.03933188935076402,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.001030246794489548,
+        "note": ""
+      },
+      "us-deepseek-r1-v1-0": {
+        "score": 0.8168635950309353,
+        "mean": 0.9101557555728975,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.002742302832244009,
+        "note": ""
+      },
+      "us-meta-llama4-maverick-17b-instruct-v1-0": {
+        "score": -3.800655933318117,
+        "mean": -0.6307987422086434,
+        "gated": 1,
+        "crashed": 0,
+        "tv": 8.04395816993464e-05,
+        "note": ""
+      },
+      "us-meta-llama4-scout-17b-instruct-v1-0": {
+        "score": -10.0,
+        "mean": -3.2842694109110555,
+        "gated": 4,
+        "crashed": 0,
+        "tv": 0.013183432992327371,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-sol": {
+        "score": -6.744659723678602,
+        "mean": -0.5391624860367885,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.0014339617622567357,
+        "note": ""
+      },
+      "us-openai-gpt-5-6-terra": {
+        "score": -8.453786534738203,
+        "mean": -1.4839727071747477,
+        "gated": 0,
+        "crashed": 0,
+        "tv": 0.001916756649336725,
+        "note": ""
+      },
+      "us-xai-grok-4-6": {
+        "score": -9.119414037303272,
+        "mean": -2.1991975384562235,
+        "gated": 10,
+        "crashed": 0,
+        "tv": 0.004332712633599742,
+        "note": ""
+      },
+      "zai-glm-5": {
+        "score": 0.22483745209584263,
+        "mean": 0.725482540118167,
+        "gated": 1,
+        "crashed": 0,
+        "tv": 0.0014071317998515082,
+        "note": ""
+      }
+    }
+  },
+  "tasks": {
+    "four_tank_v1": {
+      "content_hash": "1abc2836b6e0d4fe",
+      "tier": "mismatch",
+      "seeds": 20
+    },
+    "four_tank_blind_v1": {
+      "content_hash": "fa04e9a2dd2fa029",
+      "tier": "blind",
+      "seeds": 20
+    },
+    "four_tank_nmp_v1": {
+      "content_hash": "1e3d2150cf9c469d",
+      "tier": "mismatch",
+      "seeds": 20
+    },
+    "column_a_v1": {
+      "content_hash": "250dd0f182876c4f",
+      "tier": "mismatch",
+      "seeds": 20
+    },
+    "ph_neutralization_v1": {
+      "content_hash": "8376e3d60c731c99",
+      "tier": "mismatch",
+      "seeds": 20
+    },
+    "deadtime_process_v1": {
+      "content_hash": "07b2584fe88d8878",
+      "tier": "mismatch",
+      "seeds": 20
+    },
+    "van_de_vusse_v1": {
+      "content_hash": "d5110899baf38208",
+      "tier": "mismatch",
+      "seeds": 20
+    },
+    "boiler_drum_v1": {
+      "content_hash": "668c63d6b9e88aea",
+      "tier": "mismatch",
+      "seeds": 20
+    },
+    "unstable_cstr_v1": {
+      "content_hash": "218c54cc113d8185",
+      "tier": "mismatch",
+      "seeds": 20
+    },
+    "shell_fractionator_v1": {
+      "content_hash": "a7a167a4b4f9fce3",
+      "tier": "mismatch",
+      "seeds": 20
+    }
+  }
+}

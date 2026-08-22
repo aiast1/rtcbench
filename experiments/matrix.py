@@ -128,7 +128,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"\nSUITE = mean of per-task CVaR@10%, each task clipped at {TASK_FLOOR:+.1f} so that "
           "no single task can dominate.")
-    print("Per-task columns are UNCLIPPED — their spread is the diagnostic content.")
+    print("Per-task columns are UNCLIPPED - their spread is the diagnostic content.")
     print("A task with no controller scores 0.00, not dropped.")
     print("*  = at least one scenario gated (safety envelope or actuator duty).")
     print("-- = no submission for that task.   ERR = module would not import.")

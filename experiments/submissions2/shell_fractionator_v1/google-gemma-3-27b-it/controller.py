@@ -4,82 +4,76 @@ class Controller:
     def __init__(self, brief):
         self.brief = brief
         self.sample_time = brief.sample_time
-        self.model_hint = brief.model_hint
-        # Ensure model_hint is accessible and contains 'K'
-        if 'K' not in self.model_hint:
-            raise KeyError("Model hint does not contain 'K'")
-        self.K = np.array(self.model_hint["K"])
-        self.TAU = np.array(self.model_hint["TAU"])
-        self.L = np.array(self.model_hint["L"])
-        self.KD = np.array(self.model_hint["KD"])
-        self.TAUD = np.array(self.model_hint["TAUD"])
-        self.LD = np.array(self.model_hint["LD"])
-
-        self.num_outputs = brief.num_actuators
-        self.num_measurements = brief.num_measurements
+        self.num_outputs = 3
+        self.num_inputs = 3
+        self.K = np.array([
+            [4.05, 1.77, 5.88],
+            [5.39, 5.72, 6.9],
+            [4.38, 4.42, 7.2]
+        ])
+        self.TAU = np.array([
+            [50.0, 60.0, 50.0],
+            [50.0, 60.0, 40.0],
+            [33.0, 44.0, 19.0]
+        ])
+        self.L = np.array([
+            [27.0, 28.0, 27.0],
+            [18.0, 14.0, 15.0],
+            [20.0, 22.0, 0.0]
+        ])
+        self.KD = np.array([
+            [1.2, 1.44],
+            [1.52, 1.83],
+            [1.14, 1.26]
+        ])
+        self.TAUD = np.array([
+            [45.0, 40.0],
+            [25.0, 20.0],
+            [27.0, 32.0]
+        ])
+        self.LD = np.array([
+            [27.0, 27.0],
+            [15.0, 15.0],
+            [27.0, 32.0]
+        ])
 
         self.integrator = np.zeros(self.num_outputs)
-        self.prev_output = np.zeros(self.num_outputs)
-        self.setpoint = np.zeros(self.num_measurements)
-
+        self.last_output = np.zeros(self.num_outputs)
+        self.output_limits = np.array([[-0.5, 0.5], [-0.5, 0.5], [-0.5, 0.5]])
         self.w_effort = 0.5
+        self.max_integrator_windup = 5.0  # Reduced windup limit
 
     def reset(self):
         self.integrator = np.zeros(self.num_outputs)
-        self.prev_output = np.zeros(self.num_outputs)
-        self.setpoint = np.zeros(self.num_measurements)
+        self.last_output = np.zeros(self.num_outputs)
 
     def step(self, t, y, r, quality):
-        """t: seconds (float). y: numpy array of measured values, one per measurement.
-        r: numpy array of setpoints, nan for channels that are not scored.
-        quality: numpy bool array, False means that reading is stale/bad.
-        Returns: numpy array of control values, one per actuator."""
-
-        # Setpoint handling
-        if t < 120:
-            self.setpoint = np.array([0.0, 0.0, 0.0])
-        elif 120 <= t < 350:
-            self.setpoint = np.array([0.2, -0.15, 0.0])
-        elif 350 <= t < 440:
-            self.setpoint = np.array([-0.1, 0.1, 0.05])
-            # Ramp from 350 to 440
-            ramp_time = 90.0
-            ramp_fraction = (t - 350) / ramp_time
-            self.setpoint[2] = 0.05 * ramp_fraction
-        else:
-            self.setpoint = np.array([0.0, 0.0, 0.0])
-
-        # Calculate error
-        error = self.setpoint - y
-
-        # PID control
-        output = np.zeros(self.num_outputs)
+        u = np.zeros(self.num_outputs)
         for i in range(self.num_outputs):
-            # Proportional term
-            Kp = self.K[i, 0]
-            proportional = Kp * error[0]
+            if not quality[i]:
+                continue
 
-            # Integral term
-            Ki = self.K[i, 1]
-            self.integrator[i] += Ki * error[0] * self.sample_time
+            error = r[i] - y[i]
+            
+            # PI control with anti-windup
+            self.integrator[i] += error * self.sample_time
+            
+            # Limit integrator to prevent windup
+            self.integrator[i] = np.clip(self.integrator[i], -self.max_integrator_windup, self.max_integrator_windup)
 
-            # Anti-windup
-            output_sat = np.clip(self.prev_output[i] + proportional + self.integrator[i], -0.5, 0.5)
-            self.integrator[i] = np.clip(self.integrator[i], -1.0, 1.0)
+            u[i] = self.K[i, 0] * error + self.K[i, 1] * self.integrator[i]
 
-            # Derivative term
-            Kd = self.K[i, 2]
-            derivative = Kd * (error[0] - error[0])  # Derivative on error, not output
+            # Saturate output
+            u[i] = np.clip(u[i], self.output_limits[i, 0], self.output_limits[i, 1])
 
-            output[i] = output_sat
-
-        # Actuator limits
-        output = np.clip(output, -0.5, 0.5)
-
-        # Safety check
+        # Ensure safety constraint on y[2]
         if y[2] < -0.5:
-            output = np.zeros(self.num_outputs)
+            u = np.zeros(self.num_outputs)
 
-        self.prev_output = output
+        # Actuator duty limit check - more conservative
+        duty = np.sum(np.abs(u - self.last_output))
+        if duty > 0.01: # Reduced duty cycle limit
+            u = self.last_output
 
-        return output
+        self.last_output = u
+        return u

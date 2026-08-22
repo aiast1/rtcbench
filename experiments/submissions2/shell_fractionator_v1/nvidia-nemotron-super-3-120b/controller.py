@@ -2,89 +2,63 @@ import numpy as np
 
 class Controller:
     def __init__(self, brief):
-        self.brief = brief
-        self.dt = brief.sample_time
-        self.n_y = 3  # AI-101, AI-102, TI-103
-        self.n_u = 3  # FCV-201, FCV-202, FCV-203
-        
-        # Actuator limits
+        self.sample_time = brief.sample_time
+        self.y3_min = -0.5  # Safety constraint: y3 >= -0.5
         self.u_min = np.array([-0.5, -0.5, -0.5])
         self.u_max = np.array([0.5, 0.5, 0.5])
+        self.int_state = np.zeros(3)
+        self.prev_u = np.zeros(3)
+        self.tau_aw = 10.0  # Anti-windup time constant
         
-        # Safety constraint: y3 (bottoms reflux temp) must be >= -0.5
-        self.y3_min = -0.5
-        
-        # Controller tuning (optimized for performance while maintaining robustness)
-        self.Kp = np.array([0.07, 0.06, 0.035])   # Slightly increased for better response
-        self.Ki = np.array([0.0012, 0.0010, 0.0007])  # Adjusted for faster settling
-        self.Kd = np.array([0.0, 0.0, 0.0])      # No derivative due to noise and delay
-        
-        # State
-        self.x_int = np.zeros(self.n_y)      # Integral states
-        self.u_prev = np.zeros(self.n_u)     # Previous actuator command
-        self.last_good_y = np.zeros(self.n_y) # Last good measurement
-        self.integral_clamp = np.array([1.8, 1.8, 1.8])  # Anti-windup clamp
-        
+        # Tuned PI gains (conservative for robustness across uncertainty)
+        self.Kc = np.array([0.08, 0.08, 0.12])  # Proportional gains
+        self.tauI = np.array([40.0, 40.0, 30.0])  # Integral time constants
+
     def reset(self):
-        self.x_int = np.zeros(self.n_y)
-        self.u_prev = np.zeros(self.n_u)
-        self.last_good_y = np.zeros(self.n_y)
-        
+        self.int_state = np.zeros(3)
+        self.prev_u = np.zeros(3)
+
     def step(self, t, y, r, quality):
-        # Handle bad measurements: use last good value
-        y_used = np.where(quality, y, self.last_good_y)
-        self.last_good_y = np.where(quality, y, self.last_good_y)
+        # Compute error for scored channels (ignore NaN in r)
+        error = np.zeros(3)
+        for i in range(3):
+            if not np.isnan(r[i]):
+                error[i] = r[i] - y[i]
         
-        # Error signal (only for scored channels)
-        error = r - y_used
-        # For non-scored channels (NaN in r), set error to 0
-        error = np.where(np.isnan(error), 0.0, error)
+        # Safety override for bottoms reflux temperature (y[2])
+        safety_error = max(0.0, self.y3_min - y[2])  # Positive if below limit
+        K_safety = 2.5  # Aggressive but stable safety gain
+        safety_u2 = K_safety * safety_error
         
-        # Integral update with anti-windup (pre-update clamping)
-        self.x_int += error * self.dt
-        # Anti-windup: clamp integral based on actuator saturation
-        for i in range(self.n_y):
-            # If actuator is saturated, limit integral growth
-            if self.u_prev[i] <= self.u_min[i] + 1e-3:
-                self.x_int[i] = min(self.x_int[i], self.integral_clamp[i])
-            elif self.u_prev[i] >= self.u_max[i] - 1e-3:
-                self.x_int[i] = max(self.x_int[i], -self.integral_clamp[i])
+        # Compute tentative feedback control (PI only)
+        u_fb = np.zeros(3)
+        for i in range(3):
+            if self.tauI[i] > 0:
+                # PI control: u = Kc * error + (Kc/tauI) * integral_error
+                p_term = self.Kc[i] * error[i]
+                i_term = (self.Kc[i] / self.tauI[i]) * self.int_state[i]
+                u_fb[i] = p_term + i_term
             else:
-                # Not saturated, allow integral to move freely within bounds
-                self.x_int[i] = np.clip(self.x_int[i], -self.integral_clamp[i], self.integral_clamp[i])
+                u_fb[i] = self.Kc[i] * error[i]  # P-only if no integral
         
-        # PID control law (no derivative due to noise and delay)
-        u_pid = self.Kp * error + self.Ki * self.x_int
+        # Add safety override to u2
+        u_raw = u_fb.copy()
+        u_raw[2] += safety_u2
         
-        # Safety override: if y3 (bottoms reflux temp) is too low, increase FCV-203 to add reflux
-        # y3 is index 2, actuator 2 is FCV-203 (bottoms reflux duty)
-        if y_used[2] < self.y3_min:
-            # Proportional safety action: increase reflux to raise temperature
-            safety_gain = 0.25  # Balanced gain for safety response
-            safety_action = safety_gain * (self.y3_min - y_used[2])
-            u_pid[2] += safety_action
+        # Apply actuator limits
+        u = np.clip(u_raw, self.u_min, self.u_max)
         
-        # Anti-windup: back-calculation if actuator saturated
-        u_raw = u_pid
-        u_clipped = np.clip(u_raw, self.u_min, self.u_max)
+        # Anti-windup: back-calculation method
+        for i in range(3):
+            if self.tauI[i] > 0 and self.Kc[i] != 0:
+                # Update integral state: 
+                #   int_state_dot = error + (tauI/(tau_aw*Kc)) * (u_actual - u_unsaturated)
+                int_state_update = self.sample_time * (
+                    error[i] + 
+                    (self.tauI[i] / (self.tau_aw * self.Kc[i])) * 
+                    (u[i] - u_raw[i])
+                )
+                self.int_state[i] += int_state_update
         
-        # Back-calculation anti-windup: adjust integral if saturated
-        for i in range(self.n_u):
-            if u_raw[i] != u_clipped[i]:  # Saturated
-                # Back-calculate integral to prevent windup
-                self.x_int[i] -= (u_raw[i] - u_clipped[i]) / (self.Ki[i] + 1e-8) * self.dt * 0.07
-        
-        # Final actuator command
-        u = u_clipped
-        
-        # Rate limiting (slew rate) - tuned to minimize effort while avoiding chattering
-        max_delta = 0.012  # Slightly increased to allow faster response while staying near duty limit
-        delta = u - self.u_prev
-        delta = np.clip(delta, -max_delta, max_delta)
-        u = self.u_prev + delta
-        u = np.clip(u, self.u_min, self.u_max)  # Re-clip after rate limit
-        
-        # Update state
-        self.u_prev = u
-        
+        self.prev_u = u.copy()
         return u

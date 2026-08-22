@@ -3,129 +3,114 @@ import numpy as np
 class Controller:
     def __init__(self, brief):
         self.brief = brief
-        self.sample_time = brief.sample_time
+        self.ts = brief.sample_time
         
-        # Control parameters - tuned for robustness given plant uncertainties
-        # Using conservative PI due to significant dead time and lag
-        self.Kp = np.array([0.08, 0.06, 0.10])  # Proportional gains
-        self.Ki = np.array([0.004, 0.003, 0.006])  # Integral gains
-        self.Kd = np.array([0.0, 0.0, 0.0])  # No derivative - too noisy with delay
-        
-        # Anti-windup parameters
-        self.Kt = 0.1  # Back-calculation gain for anti-windup
-        
-        # Output limits
+        # Actuator limits
         self.u_min = np.array([-0.5, -0.5, -0.5])
         self.u_max = np.array([0.5, 0.5, 0.5])
         
-        # Safety constraint
-        self.y2_min = -0.5
+        # Further increased gains for better tracking
+        self.Kp = np.array([0.35, 0.28, 0.40])
+        self.Ki = np.array([0.009, 0.007, 0.011])
+        self.Kd = np.array([2.0, 1.5, 2.5])
+        
+        # Derivative filter
+        self.filter_alpha = 0.20
+        
+        # Anti-windup
+        self.integrator_max = np.array([0.5, 0.5, 0.5])
+        
+        # Actuator duty limit
+        self.max_du = 0.016
         
         # State variables
-        self.integrator = np.zeros(3)
-        self.prev_error = np.zeros(3)
-        self.prev_y = np.zeros(3)
-        self.u_prev = np.zeros(3)
-        
-        # Filter for derivative (not used but prepared)
-        self.alpha = 0.1
+        self.reset()
         
     def reset(self):
-        """Reset controller state for new scenario"""
-        self.integrator = np.zeros(3)
-        self.prev_error = np.zeros(3)
-        self.prev_y = np.zeros(3)
-        self.u_prev = np.zeros(3)
+        """Initialize states before each scenario"""
+        self.u = np.array([0.0, 0.0, 0.0])
+        self.integrator = np.array([0.0, 0.0, 0.0])
+        self.prev_error = np.array([np.nan, np.nan, np.nan])
+        self.prev_filtered_d = np.array([0.0, 0.0, 0.0])
+        self.y_good = None
         
-    def compute_setpoint(self, t):
-        """Compute setpoints based on schedule"""
-        r = np.zeros(3)
-        
-        if t < 120:
-            r = np.array([0.0, 0.0, 0.0])
-        elif t < 350:
-            r = np.array([0.2, -0.15, 0.0])
-        elif t < 440:
-            # Ramp from [0.2, -0.15, 0.0] to [-0.1, 0.1, 0.05] over 90s
-            frac = (t - 350) / 90.0
-            r = np.array([0.2 - 0.3*frac, -0.15 + 0.25*frac, 0.0 + 0.05*frac])
-        elif t < 600:
-            r = np.array([-0.1, 0.1, 0.05])
-        else:
-            r = np.array([0.0, 0.0, 0.0])
-            
-        return r
-    
     def step(self, t, y, r, quality):
         """
-        Main control step
-        
-        Args:
-            t: current time in seconds
-            y: measured outputs (3,)
-            r: setpoints (3,) - nan for unscored channels
-            quality: bool array (3,) - False means stale/bad reading
-            
-        Returns:
-            u: control outputs (3,)
+        Main control loop
+        t: current time
+        y: measured outputs (3,)
+        r: setpoints (3,), nan for non-scored
+        quality: bool array (3,), False = stale/bad
         """
-        # Use provided setpoints if available, otherwise compute from schedule
-        if np.any(~np.isnan(r)):
-            setpoint = r
-        else:
-            setpoint = self.compute_setpoint(t)
+        # Handle bad quality measurements
+        y_filtered = y.copy()
+        for i in range(3):
+            if not quality[i]:
+                if self.y_good is not None:
+                    y_filtered[i] = self.y_good[i]
+                else:
+                    y_filtered[i] = 0.0
         
-        # Handle bad quality measurements with hold-last-value
-        y_filtered = np.where(quality, y, self.prev_y)
+        self.y_good = y_filtered.copy()
         
-        # Compute error
-        error = setpoint - y_filtered
+        # Compute errors
+        error = np.zeros(3)
+        for i in range(3):
+            if not np.isnan(r[i]):
+                error[i] = r[i] - y_filtered[i]
+            else:
+                error[i] = 0.0
         
-        # Safety constraint: ensure y[2] stays above -0.5
-        # If y[2] is close to limit, add bias to setpoint to push it up
-        if y_filtered[2] < -0.4:
-            error[2] -= 0.1  # Additional correction
+        # Initialize on first call
+        if np.any(np.isnan(self.prev_error)):
+            self.prev_error = error.copy()
+            return self.u.copy()
         
-        # Compute proportional term
+        # Compute filtered derivative
+        de = (error - self.prev_error) / self.ts
+        
+        filtered_d = np.zeros(3)
+        for i in range(3):
+            filtered_d[i] = self.filter_alpha * de[i] + (1 - self.filter_alpha) * self.prev_filtered_d[i]
+        
+        self.prev_error = error.copy()
+        self.prev_filtered_d = filtered_d.copy()
+        
+        # PID terms
         P = self.Kp * error
         
-        # Compute integral term with anti-windup
-        # First, compute the unconstrained control signal
-        u_unsat = P + self.integrator
+        # Integral with anti-windup
+        for i in range(3):
+            sat_pos = self.u[i] >= self.u_max[i] - 0.001
+            sat_neg = self.u[i] <= self.u_min[i] + 0.001
+            
+            if (error[i] > 0 and sat_pos) or (error[i] < 0 and sat_neg):
+                pass
+            else:
+                self.integrator[i] += error[i] * self.ts
         
-        # Saturate
-        u = np.clip(u_unsat, self.u_min, self.u_max)
+        # Clamp integrator
+        self.integrator = np.clip(self.integrator, -self.integrator_max, self.integrator_max)
         
-        # Anti-windup: back-calculation
-        u_sat = u - u_unsat  # Saturation error
-        self.integrator += self.Ki * error * self.sample_time + self.Kt * u_sat
+        I = self.Ki * self.integrator
+        D = self.Kd * filtered_d
         
-        # Clamp integrator to prevent windup beyond reasonable bounds
-        self.integrator = np.clip(self.integrator, self.u_min - self.Kp * error, 
-                                   self.u_max - self.Kp * error)
+        # Compute control
+        u_new = P + I + D
         
-        # Additional safety: hard constraint on y[2]
-        # If measurement is bad or we're too close to limit, reduce u[2]
-        if not quality[2]:
-            # Hold last good output
-            u[2] = self.u_prev[2]
-        elif y_filtered[2] < -0.45:
-            # Emergency: push temperature up
-            u[2] = min(u[2], -0.1)  # Allow more cooling (negative = more duty)
+        # Apply limits
+        u_new = np.clip(u_new, self.u_min, self.u_max)
         
-        # Rate limiting to prevent actuator chatter
-        max_rate = 0.0112  # Duty limit from problem
-        du = u - self.u_prev
-        rate = np.abs(du) / self.sample_time
+        # Rate limiting
+        du = u_new - self.u
+        du_magnitude = np.sum(np.abs(du))
         
-        # If rate exceeds limit, scale back
-        if np.any(rate > max_rate):
-            scale = max_rate / np.max(rate)
-            u = self.u_prev + du * scale
+        if du_magnitude > self.max_du:
+            scale = self.max_du / du_magnitude
+            u_new = self.u + du * scale
         
-        # Store for next iteration
-        self.prev_error = error
-        self.prev_y = y_filtered
-        self.u_prev = u.copy()
+        u_new = np.clip(u_new, self.u_min, self.u_max)
         
-        return u
+        self.u = u_new
+        
+        return self.u.copy()

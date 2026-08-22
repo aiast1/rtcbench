@@ -1,5 +1,14 @@
 # Results
 
+**Current: `matrix_2026-08-23.json`** — 20 models x 10 tasks, every task hash pinned and
+verified current by `python experiments/check_stale.py`. The first results file in this repo
+that can prove which task versions produced it.
+
+Earlier files are kept, not deleted. `matrix_2026-08-21` and `matrix_2026-08-22` predate hash
+recording and are marked UNPINNED by the staleness check: their numbers describe tasks of
+unknown vintage, which is exactly why the pinning exists now.
+
+
 **[report.html](report.html) is the readable view** of the run below — a ranked suite score
 and a model x plant heatmap. Regenerate it after any new scoring pass with:
 

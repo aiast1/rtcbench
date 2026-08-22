@@ -12,7 +12,7 @@ python experiments/report.py --out out/report.html      # the current results
 rtcbench score --task tasks/four_tank_v1.yaml --controller examples/pi_controller.py
 ```
 
-Nine plants, 178 tests, two dependencies, no GPU. A full scoring pass runs on a laptop.
+Ten plants, 190 tests, two dependencies, no GPU. A full scoring pass runs on a laptop.
 
 ---
 
@@ -27,14 +27,14 @@ Twenty models each commissioned a controller for ten plants through one identica
 
 Blue beats doing nothing, red is worse than doing nothing, and the rightmost column is the
 suite score. **[The full report](leaderboard/report.html)** has all twenty models, per-cell
-detail and the raw [matrix](leaderboard/matrix_2026-08-22.json).
+detail and the raw [matrix](leaderboard/matrix_2026-08-23.json).
 
 Read it by **column**, not by row — a plant where most of the field is red is a plant that
 discriminates, and that is more useful than the ranking:
 
 | | |
 |---|---|
-| Leader | **claude-fable-5**, suite **+0.553** — its second win, on a changed roster and a changed scoring rule |
+| Leader | **claude-fable-5**, suite **+0.553** — a second win, on a changed roster and a changed scoring rule |
 | Hardest column | `four_tank_nmp` — median **−1.88**, and only one model above zero |
 | Easiest | `four_tank_blind` — median **+0.84**, *higher* than the same plant with the model supplied |
 | Best single score | **+1.34**, Fable on `deadtime` — one of few results above a reference |

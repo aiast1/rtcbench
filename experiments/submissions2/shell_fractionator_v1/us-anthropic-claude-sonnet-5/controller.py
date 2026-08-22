@@ -3,93 +3,138 @@ import numpy as np
 
 class Controller:
     """
-    Decentralized PI controller (one loop per actuator/measurement pair,
-    matching the physical pairing FCV-201->AI-101, FCV-202->AI-102,
-    FCV-203->TI-103) with:
-      - SIMC-style PI tuning derived from the nominal FOPDT model, detuned
-        (tau_c = 2*L) for robustness to per-scenario parameter mismatch,
-      - hard actuator saturation,
-      - an explicit per-step rate limiter kept safely below the actuator
-        duty-limit threshold to avoid any chattering/duty violation,
-      - back-calculation anti-windup so the integrator always reflects the
-        actually-applied (possibly clamped/rate-limited) command.
+    Decentralized PI(D) controller with steady-state gain decoupling,
+    conditional anti-windup, hard actuator-rate limiting (to respect the
+    0.016/step duty limit) and a dedicated safety override for the
+    bottoms-temperature floor constraint.
 
-    No cross-loop decoupling is used: with independently-drawn gains/lags/
-    delays per scenario, a nominal-model decoupler could easily destabilize
-    an unlucky draw. Conservative decentralized loops with strong anti-windup
-    and rate-limiting are the robust choice for the worst-case scoring rule.
+    Revision 3: effort cost is a small fraction of tracking cost (rate
+    limiting already keeps actuator travel modest), so gains were
+    pushed further and integral time shortened to attack the dominant
+    tracking-error term. A small derivative-on-measurement term was
+    added (not derivative-on-error, to avoid setpoint-step kick) using
+    the already-filtered signal to help settle the ramp/step
+    transitions faster without amplifying noise.
     """
 
     def __init__(self, brief):
-        self.dt = float(getattr(brief, "sample_time", 1.0))
+        self.dt = getattr(brief, "sample_time", 1.0)
 
-        # Nominal diagonal FOPDT parameters (K_ii, L_ii, tau_ii) from the
-        # model hint. Bottoms loop dead time floored to a small positive
-        # value for robust tuning (nominal is ~0, but real draw will be >0).
-        self.K = np.array([4.05, 5.72, 7.2])
-        self.L = np.array([27.0, 14.0, 5.0])
-        self.TAU = np.array([50.0, 60.0, 19.0])
+        # ---- nominal steady-state gain matrix (model hint) -----------------
+        self.K = np.array([
+            [4.05, 1.77, 5.88],
+            [5.39, 5.72, 6.90],
+            [4.38, 4.42, 7.20],
+        ], dtype=float)
 
-        # SIMC PI tuning with tau_c = 2*L (robust / detuned choice)
-        tau_c = 2.0 * self.L
-        self.Kc = (1.0 / self.K) * (self.TAU / (self.L + tau_c))
-        self.tau_I = np.minimum(self.TAU, 4.0 * (tau_c + self.L))
+        # regularized inverse for a *damped* steady-state decoupler
+        reg = 1.0e-2 * np.eye(3)
+        try:
+            self.Kinv = np.linalg.inv(self.K + reg)
+        except np.linalg.LinAlgError:
+            self.Kinv = np.linalg.pinv(self.K)
 
-        # Actuator limits
-        self.u_min = -0.5
-        self.u_max = 0.5
+        self.diagK = np.diag(self.K).copy()
+        self.diagK[np.abs(self.diagK) < 1e-3] = 1e-3
 
-        # Per-step rate limit, kept comfortably under the 0.0112 duty limit
-        self.rate_max = 0.0095
+        # blend factor between full steady-state decoupling and pure diagonal
+        self.alpha = 0.7
 
-        self.n = 3
+        # ---- PID tuning (per scored channel, in y-error units) --------------
+        self.Kp = np.array([0.58, 0.58, 0.58])
+        self.Ti = np.array([26.0, 26.0, 26.0])   # integral time [s]
+        self.Ki = self.Kp / self.Ti
+        self.Kd = np.array([0.06, 0.06, 0.06]) * self.Kp * 8.0  # mild derivative-on-measurement
+
+        self.Imax = 4.0
+
+        # ---- actuator limits -------------------------------------------------
+        self.u_lo = -0.5
+        self.u_hi = 0.5
+        self.rate_max = 0.0150  # margin under the 0.016 duty-limit threshold
+
+        # ---- measurement filter (light, to fight noise without adding delay
+        # comparable to the process lags) ------------------------------------
+        self.tau_f = 4.0
+
+        # ---- safety on TI-103 (index 2), hard floor at -0.5 -----------------
+        self.safe_low = -0.40   # start biasing recovery
+        self.safe_hard = -0.47  # near-hard: force maximum recovery rate
+
         self.reset()
 
     def reset(self):
-        self.u_prev = np.zeros(self.n)
-        self.integral = np.zeros(self.n)
-        self.y_last = np.zeros(self.n)
-        self._started = False
+        self.y_filt = np.zeros(3)
+        self.have_filt = False
+        self.y_filt_prev = np.zeros(3)
+        self.I = np.zeros(3)
+        self.u_prev = np.zeros(3)
 
     def step(self, t, y, r, quality):
         y = np.asarray(y, dtype=float)
         r = np.asarray(r, dtype=float)
         quality = np.asarray(quality, dtype=bool)
+        dt = self.dt
 
-        # Hold last-good value for stale/bad readings
-        if not self._started:
-            self.y_last = y.copy()
-            self._started = True
+        # ---- filter (hold last good value on bad quality) -------------------
+        self.y_filt_prev = self.y_filt.copy()
+        if not self.have_filt:
+            self.y_filt = y.copy()
+            self.y_filt_prev = y.copy()
+            self.have_filt = True
+        else:
+            a = dt / (self.tau_f + dt)
+            for i in range(3):
+                if quality[i]:
+                    self.y_filt[i] += a * (y[i] - self.y_filt[i])
+                # else: hold previous filtered value
 
-        y_use = np.where(quality, y, self.y_last)
-        self.y_last = np.where(quality, y, self.y_last)
+        # ---- error (nan setpoints -> zero contribution) ---------------------
+        e = np.where(np.isnan(r), 0.0, r - self.y_filt)
 
-        # All three channels are scored; guard against stray NaNs anyway
-        r_use = np.where(np.isnan(r), 0.0, r)
+        # ---- derivative on measurement (filtered), not on error --------------
+        dy = (self.y_filt - self.y_filt_prev) / dt
+        deriv_term = -self.Kd * dy
+        deriv_term = np.where(np.isnan(r), 0.0, deriv_term)
 
-        e = r_use - y_use
+        # ---- PID "virtual" correction in output space -------------------------
+        v = self.Kp * e + self.Ki * self.I + deriv_term
 
-        # Update integral state (will be corrected below for anti-windup)
-        integral_trial = self.integral + e * self.dt
+        # ---- decoupled and diagonal-only actuator targets --------------------
+        u_dec = self.Kinv @ v
+        u_diag = v / self.diagK
+        u_target = self.alpha * u_dec + (1.0 - self.alpha) * u_diag
 
-        u_unclamped = self.Kc * e + (self.Kc / self.tau_I) * integral_trial
+        # ---- safety override on bottoms temperature (measured, index 2) -----
+        y2_raw = y[2] if quality[2] else self.y_filt[2]
+        if y2_raw < self.safe_low:
+            deficiency = self.safe_low - y2_raw
+            boost = 6.0 * deficiency
+            u_target[2] = max(u_target[2], self.u_prev[2] + boost)
+            if y2_raw < self.safe_hard:
+                # force maximum allowed upward move this step
+                u_target[2] = self.u_prev[2] + self.rate_max
 
-        # Hard actuator saturation
-        u_sat = np.clip(u_unclamped, self.u_min, self.u_max)
+        # ---- clip to hard actuator limits ------------------------------------
+        u_target = np.clip(u_target, self.u_lo, self.u_hi)
 
-        # Per-step rate limiting relative to previous applied command
-        delta = u_sat - self.u_prev
-        delta = np.clip(delta, -self.rate_max, self.rate_max)
-        u_out = self.u_prev + delta
-        u_out = np.clip(u_out, self.u_min, self.u_max)
+        # ---- slew / duty limiting --------------------------------------------
+        raw_delta = u_target - self.u_prev
+        delta = np.clip(raw_delta, -self.rate_max, self.rate_max)
+        u = self.u_prev + delta
+        u = np.clip(u, self.u_lo, self.u_hi)
 
-        # Anti-windup: back-calculate the integral so that, given the
-        # actually applied output, the PI equation is self-consistent.
-        # This prevents windup whenever saturation or rate limiting bites.
-        safe_Kc = np.where(np.abs(self.Kc) < 1e-9, 1e-9, self.Kc)
-        integral_corrected = (u_out - self.Kc * e) * (self.tau_I / safe_Kc)
-        self.integral = integral_corrected
+        # ---- conditional anti-windup ------------------------------------------
+        limited = np.abs(raw_delta) > (self.rate_max + 1e-9)
+        for i in range(3):
+            if limited[i]:
+                # heavily throttle integration while rate-saturated,
+                # but keep a trickle so we still recover from big offsets
+                self.I[i] += 0.15 * e[i] * dt
+            else:
+                self.I[i] += e[i] * dt
 
-        self.u_prev = u_out.copy()
+        self.I = np.clip(self.I, -self.Imax, self.Imax)
 
-        return u_out
+        self.u_prev = u
+        return u

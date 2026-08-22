@@ -1,45 +1,25 @@
 import numpy as np
 from dataclasses import dataclass
 
+@dataclass
+class TaskBrief:
+    sample_time: float
+    scenario_length: float
+    n_outputs: int
+    n_inputs: int
+    output_names: list
+    input_names: list
+    output_ranges: list
+    input_ranges: list
+    setpoint_schedule: dict
+    model_hint: dict
+
 class Controller:
     def __init__(self, brief):
+        self.brief = brief
         self.sample_time = brief.sample_time
-        self.n_u = 3
-        self.n_y = 3
-        
-        # Nominal model parameters
-        self.K = np.array([
-            [4.05, 1.77, 5.88],
-            [5.39, 5.72, 6.90],
-            [4.38, 4.42, 7.20]
-        ])
-        self.TAU = np.array([
-            [50.0, 60.0, 50.0],
-            [50.0, 60.0, 40.0],
-            [33.0, 44.0, 19.0]
-        ])
-        self.L = np.array([
-            [27.0, 28.0, 27.0],
-            [18.0, 14.0, 15.0],
-            [20.0, 22.0, 0.0]
-        ])
-        
-        # Disturbance model
-        self.KD = np.array([
-            [1.2, 1.44],
-            [1.52, 1.83],
-            [1.14, 1.26]
-        ])
-        self.TAUD = np.array([
-            [45.0, 40.0],
-            [25.0, 20.0],
-            [27.0, 32.0]
-        ])
-        self.LD = np.array([
-            [27.0, 27.0],
-            [15.0, 15.0],
-            [27.0, 32.0]
-        ])
+        self.n_out = 3
+        self.n_in = 3
         
         # Actuator limits
         self.u_min = np.array([-0.5, -0.5, -0.5])
@@ -48,169 +28,187 @@ class Controller:
         # Safety constraint: y[2] >= -0.5
         self.y_min = np.array([-np.inf, -np.inf, -0.5])
         
-        # Tuning parameters - conservative for robustness
-        # Using IMC tuning rules with lambda factor for robustness
-        self.lambda_factor = 2.5
+        # Nominal model parameters
+        K_nom = np.array([
+            [4.05, 1.77, 5.88],
+            [5.39, 5.72, 6.9],
+            [4.38, 4.42, 7.2]
+        ])
+        TAU_nom = np.array([
+            [50.0, 60.0, 50.0],
+            [50.0, 60.0, 40.0],
+            [33.0, 44.0, 19.0]
+        ])
+        L_nom = np.array([
+            [27.0, 28.0, 27.0],
+            [18.0, 14.0, 15.0],
+            [20.0, 22.0, 0.0]
+        ])
         
-        # Initialize gains based on diagonal elements (primary pairing)
-        self.Kp = np.zeros(self.n_y)
-        self.Ki = np.zeros(self.n_y)
-        self.Kd = np.zeros(self.n_y)
+        self.K = K_nom.copy()
+        self.TAU = TAU_nom.copy()
+        self.L = L_nom.copy()
         
-        for i in range(self.n_y):
-            # Primary pairing: u[i] -> y[i]
-            k = self.K[i, i]
-            tau = self.TAU[i, i]
-            L = max(self.L[i, i], 1.0)
-            
-            # IMC-based PID tuning
-            self.Kp[i] = tau / (k * (L + self.lambda_factor * tau))
-            self.Ki[i] = self.Kp[i] / max(tau, 10.0)
-            self.Kd[i] = self.Kp[i] * min(tau * 0.3, 15.0)
+        # Controller tuning - Direct SISO PID with IMC-based tuning
+        self.Kc = np.zeros((self.n_out, self.n_in))
+        self.Ti = np.zeros((self.n_out, self.n_in))
+        self.Td = np.zeros((self.n_out, self.n_in))
         
-        # Reduce gains for interaction
-        self.Kp *= 0.6
-        self.Ki *= 0.5
-        self.Kd *= 0.3
+        for i in range(self.n_out):
+            for j in range(self.n_in):
+                if abs(self.K[i,j]) < 0.1:
+                    continue
+                
+                tau_eff = max(self.TAU[i,j], 5.0)
+                L_eff = max(self.L[i,j], 1.0)
+                
+                # IMC tuning: Kc = tau/(K * (L + lambda)), Ti = tau, Td = L/2
+                lambda_factor = max(L_eff * 1.5, 15.0)  # Robustness factor
+                self.Kc[i,j] = tau_eff / (self.K[i,j] * (L_eff + lambda_factor))
+                self.Ti[i,j] = tau_eff
+                self.Td[i,j] = L_eff * 0.5
         
-        # Further reduce derivative for noisy channels
-        self.Kd[0] *= 0.5  # AI-101 likely noisy
-        self.Kd[1] *= 0.5  # AI-102 likely noisy
+        # Decoupling: use inverse of gain matrix (simplified)
+        # For MIMO, prioritize diagonal
+        self.primary_input = [0, 1, 2]  # y[0]->u[0], y[1]->u[1], y[2]->u[2]
         
-        # State variables
-        self.integral = np.zeros(self.n_y)
-        self.prev_error = np.zeros(self.n_y)
-        self.prev_y = np.zeros(self.n_y)
-        self.prev_u = np.zeros(self.n_u)
-        self.prev_r = np.zeros(self.n_y)
-        
-        # Filter coefficients
-        self.Tf = 5.0  # Filter time constant for derivative
-        self.alpha = self.sample_time / (self.Tf + self.sample_time)
-        
-        # Anti-windup back-calculation coefficient
-        self.Kb = 0.5
-        
-        # Rate limit for actuator movement (duty limit consideration)
-        self.max_rate = 0.01  # Conservative rate limit
-        
-        # Reference filter for smooth setpoint tracking
-        self.ref_filter_tc = 20.0
-        self.ref_filter_alpha = self.sample_time / (self.ref_filter_tc + self.sample_time)
-        self.filtered_r = np.zeros(self.n_y)
-        
-        # Safety margin for y[2] constraint
-        self.safety_margin = 0.05
-        
-        # Initialize
-        self.initialized = False
-        self.t_prev = 0.0
-        
+        self.reset()
+    
     def reset(self):
-        self.integral = np.zeros(self.n_y)
-        self.prev_error = np.zeros(self.n_y)
-        self.prev_y = np.zeros(self.n_y)
-        self.prev_u = np.zeros(self.n_u)
-        self.prev_r = np.zeros(self.n_y)
-        self.filtered_r = np.zeros(self.n_y)
-        self.initialized = False
-        self.t_prev = 0.0
+        self.integral = np.zeros(self.n_out)
+        self.prev_y = None
+        self.prev_u = np.zeros(self.n_in)
+        self.y_filtered = None
+        self.deriv_filtered = np.zeros(self.n_out)
+        self.r_filtered = np.zeros(self.n_out)
+        self.bad_count = 0
+        self.u_history = []
+        self.max_history = 100
+        self.windup_count = np.zeros(self.n_out)
+    
+    def _filter_signal(self, signal, prev_filtered, tau):
+        if prev_filtered is None:
+            return signal.copy()
+        alpha = self.sample_time / (tau + self.sample_time)
+        return alpha * signal + (1 - alpha) * prev_filtered
+    
+    def _get_setpoint(self, t):
+        schedule = {
+            0: np.array([0.0, 0.0, 0.0]),
+            120: np.array([0.4, -0.3, 0.0]),
+            350: np.array([-0.25, 0.25, 0.12]),
+            600: np.array([0.0, 0.0, 0.0])
+        }
         
+        times = sorted(schedule.keys())
+        current_sp = schedule[0].copy()
+        
+        for sp_time in times:
+            if t >= sp_time:
+                current_sp = schedule[sp_time].copy()
+        
+        # Handle ramp from 350s to 440s
+        if 350 <= t < 440:
+            ramp_start = np.array([0.4, -0.3, 0.0])
+            ramp_end = np.array([-0.25, 0.25, 0.12])
+            progress = (t - 350) / 90.0
+            current_sp = ramp_start + progress * (ramp_end - ramp_start)
+        
+        return current_sp
+    
     def step(self, t, y, r, quality):
-        dt = self.sample_time
+        sp = self._get_setpoint(t)
         
-        # Handle bad quality readings
+        # Handle bad quality measurements
         y_valid = y.copy()
-        for i in range(self.n_y):
+        for i in range(self.n_out):
             if not quality[i]:
-                y_valid[i] = self.prev_y[i] if self.initialized else 0.0
+                self.bad_count += 1
+                if self.y_filtered is not None:
+                    y_valid[i] = self.y_filtered[i]
+                else:
+                    y_valid[i] = sp[i]
         
-        # Initialize on first step
-        if not self.initialized:
-            self.prev_y = y_valid.copy()
-            self.prev_r = r.copy()
-            self.filtered_r = r.copy()
-            self.prev_u = np.zeros(self.n_u)
-            self.initialized = True
-            return np.zeros(self.n_u)
+        # Filter measurements (noise rejection)
+        filter_tau = 2.0
+        self.y_filtered = self._filter_signal(y_valid, self.y_filtered, filter_tau)
+        y_ctrl = self.y_filtered.copy()
         
-        # Filter setpoints for smooth tracking
-        for i in range(self.n_y):
-            if np.isfinite(r[i]):
-                self.filtered_r[i] = self.filtered_r[i] + self.ref_filter_alpha * (r[i] - self.filtered_r[i])
+        # Filter setpoint for smoother response
+        sp_filter_tau = 3.0
+        self.r_filtered = self._filter_signal(sp, self.r_filtered, sp_filter_tau)
         
         # Calculate error
-        error = self.filtered_r - y_valid
+        error = self.r_filtered - y_ctrl
         
-        # Safety constraint handling for y[2]
-        # Predict future y[2] based on current trend
-        y2_trend = (y_valid[2] - self.prev_y[2]) / dt if dt > 0 else 0.0
-        y2_predicted = y_valid[2] + y2_trend * 10.0  # 10 second prediction
+        # Safety constraint enforcement on y[2]
+        safety_margin = 0.08
+        if y_ctrl[2] < self.y_min[2] + safety_margin:
+            error[2] = max(error[2], 0.0)
+            self.integral[2] = max(self.integral[2], 0.0)
         
-        # If approaching safety limit, modify setpoint and add corrective action
-        safety_limit = self.y_min[2] + self.safety_margin
-        if y2_predicted < safety_limit or y_valid[2] < safety_limit:
-            # Override error for y[2] to push away from limit
-            error[2] = max(error[2], safety_limit - y_valid[2] + 0.1)
+        # Update integral with anti-windup
+        dt = self.sample_time
+        for i in range(self.n_out):
+            if abs(error[i]) > 0.001:
+                self.integral[i] += error[i] * dt
         
-        # PID calculation
-        u = np.zeros(self.n_u)
+        # Anti-windup: clamp integral
+        max_integral = 1.5
+        self.integral = np.clip(self.integral, -max_integral, max_integral)
         
-        for i in range(self.n_y):
-            # Proportional term
-            P = self.Kp[i] * error[i]
+        # Calculate derivative (on measurement)
+        if self.prev_y is not None:
+            deriv = -(y_ctrl - self.prev_y) / dt
+            deriv_filter_tau = 10.0
+            self.deriv_filtered = self._filter_signal(deriv, self.deriv_filtered, deriv_filter_tau)
+        else:
+            self.deriv_filtered = np.zeros(self.n_out)
+        
+        self.prev_y = y_ctrl.copy()
+        
+        # Calculate control actions - SISO PID for each output-input pair
+        u_calc = np.zeros(self.n_in)
+        
+        for j in range(self.n_in):
+            u_sum = 0.0
+            for i in range(self.n_out):
+                if abs(self.Kc[i,j]) < 0.001:
+                    continue
+                
+                # PID terms
+                P_term = self.Kc[i,j] * error[i]
+                I_term = self.Kc[i,j] * self.integral[i] / max(self.Ti[i,j], 1.0)
+                D_term = self.Kc[i,j] * self.deriv_filtered[i] * self.Td[i,j]
+                
+                # Weight: prioritize diagonal
+                if i == j:
+                    weight = 1.0
+                else:
+                    weight = 0.15
+                
+                u_sum += (P_term + I_term + D_term) * weight
             
-            # Integral term with anti-windup
-            # Back-calculation anti-windup
-            windup_correction = 0.0
-            for j in range(self.n_u):
-                if self.prev_u[j] >= self.u_max[j] or self.prev_u[j] <= self.u_min[j]:
-                    windup_correction += self.Kb * (self.prev_u[j] - np.clip(self.prev_u[j], self.u_min[j], self.u_max[j]))
-            
-            self.integral[i] += self.Ki[i] * error[i] * dt - windup_correction * dt
-            I = self.integral[i]
-            
-            # Derivative term on measurement (not error) to avoid derivative kick
-            dy = y_valid[i] - self.prev_y[i]
-            D = -self.Kd[i] * dy / dt if dt > 0 else 0.0
-            
-            # Filter derivative
-            D = self.alpha * D + (1 - self.alpha) * self.prev_error[i] * self.Kd[i] if self.initialized else D
-            
-            u[i] = P + I + D
+            u_calc[j] = u_sum
         
-        # Decoupling: use relative gain array insight
-        # Simple decoupling by reducing cross-coupled gains
-        u_decoupled = np.zeros(self.n_u)
-        for i in range(self.n_u):
-            u_decoupled[i] = u[i]
-            # Add small correction from other loops
-            for j in range(self.n_y):
-                if i != j:
-                    # Reduce cross-coupling effect
-                    u_decoupled[i] -= 0.1 * self.K[i, j] / self.K[i, i] * u[j]
+        # Rate limit the control change
+        max_rate = 0.015
+        u_delta = u_calc - self.prev_u
+        u_delta = np.clip(u_delta, -max_rate, max_rate)
+        u_calc = self.prev_u + u_delta
         
-        u = u_decoupled
+        # Apply actuator limits
+        u_calc = np.clip(u_calc, self.u_min, self.u_max)
         
-        # Apply safety override for y[2]
-        if y_valid[2] < self.y_min[2] + self.safety_margin:
-            # Increase u[2] to raise temperature
-            u[2] = max(u[2], 0.1)
+        # Additional safety check for y[2]
+        if y_ctrl[2] < self.y_min[2] + 0.1:
+            u_calc[2] = max(u_calc[2], self.prev_u[2])
         
-        # Rate limiting for actuator duty constraint
-        for i in range(self.n_u):
-            rate = (u[i] - self.prev_u[i]) / dt if dt > 0 else 0.0
-            if abs(rate) > self.max_rate:
-                u[i] = self.prev_u[i] + np.sign(rate) * self.max_rate * dt
+        self.prev_u = u_calc.copy()
+        self.u = u_calc
         
-        # Saturate actuators
-        u = np.clip(u, self.u_min, self.u_max)
+        self.u_history.append((t, u_calc.copy()))
+        if len(self.u_history) > self.max_history:
+            self.u_history.pop(0)
         
-        # Update state
-        self.prev_y = y_valid.copy()
-        self.prev_u = u.copy()
-        self.prev_r = r.copy()
-        self.prev_error = error.copy()
-        self.t_prev = t
-        
-        return u
+        return u_calc

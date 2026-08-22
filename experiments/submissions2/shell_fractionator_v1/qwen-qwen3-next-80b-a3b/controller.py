@@ -3,153 +3,143 @@ import numpy as np
 class Controller:
     def __init__(self, brief):
         self.brief = brief
+        self.nu = 3  # number of actuators
+        self.ny = 3  # number of measurements
         self.dt = brief.sample_time
-        self.n_inputs = 3
-        self.n_outputs = 3
-        self.n_disturbances = 2
         
-        # Nominal model parameters (used for tuning, not for prediction)
-        self.K = np.array([
-            [4.05, 1.77, 5.88],
-            [5.39, 5.72, 6.90],
-            [4.38, 4.42, 7.20]
-        ])
-        self.TAU = np.array([
-            [50.0, 60.0, 50.0],
-            [50.0, 60.0, 40.0],
-            [33.0, 44.0, 19.0]
-        ])
-        self.L = np.array([
-            [27.0, 28.0, 27.0],
-            [18.0, 14.0, 15.0],
-            [20.0, 22.0, 0.0]
-        ])
+        # Conservative tuning parameters
+        self.Kp_gain = 0.10  # very conservative proportional gain
+        self.Ki_gain = 0.005  # very slow integral action
+        self.Kd_gain = 0.0   # no derivative - noise sensitive
         
-        # PID tuning parameters (conservative for robustness)
-        self.Kp = np.array([0.15, 0.15, 0.18])   # Slightly increased for better response
-        self.Ki = np.array([0.0018, 0.0018, 0.0025])  # Slightly increased integral gain
-        self.Kd = np.array([0.005, 0.005, 0.01])  # Reduced derivative for noise immunity
-        
-        # Anti-windup and constraints
+        # Constraints
         self.actuator_limits = np.array([-0.5, 0.5])
-        self.max_actuator_change = 0.0112  # Duty limit
-        self.integral_windup_limit = 0.6   # Slightly increased for better steady-state
+        self.max_actuator_change = 0.016  # duty limit
+        self.safety_margin = 0.10  # safety buffer for TI-103 (conservative)
+        self.integral_windup_limit = 0.3  # tight anti-windup
+        self.deadband = 0.005  # prevent chattering
         
         # State variables
-        self.prev_error = np.zeros(self.n_outputs)
-        self.integral = np.zeros(self.n_outputs)
-        self.prev_control = np.zeros(self.n_outputs)
-        self.prev_measurement = np.zeros(self.n_outputs)
-        self.last_t = 0.0
-        self.derivative_filter = np.zeros(self.n_outputs)
+        self.integral_terms = np.zeros(self.ny)
+        self.prev_error = np.zeros(self.ny)
+        self.prev_output = np.zeros(self.nu)
+        self.prev_y = np.zeros(self.ny)
+        self.last_u = np.zeros(self.nu)
         
-        # Setpoint schedule
-        self.setpoint_schedule = [
-            (0.0, np.array([0.0, 0.0, 0.0])),
-            (120.0, np.array([0.2, -0.15, 0.0])),
-            (350.0, np.array([-0.1, 0.1, 0.05])),
-            (600.0, np.array([0.0, 0.0, 0.0]))
-        ]
+        # Safety-focused state
+        self.safety_priority = 0.0  # how much to prioritize safety over setpoint
+        self.safety_timer = 0
         
-        # Initialize for first call
-        self.reset()
-    
     def reset(self):
-        """Reset controller state for new scenario."""
-        self.prev_error = np.zeros(self.n_outputs)
-        self.integral = np.zeros(self.n_outputs)
-        self.prev_control = np.zeros(self.n_outputs)
-        self.prev_measurement = np.zeros(self.n_outputs)
-        self.derivative_filter = np.zeros(self.n_outputs)
-        self.last_t = 0.0
-    
+        """Called once before each scenario"""
+        self.integral_terms = np.zeros(self.ny)
+        self.prev_error = np.zeros(self.ny)
+        self.prev_output = np.zeros(self.nu)
+        self.prev_y = np.zeros(self.ny)
+        self.last_u = np.zeros(self.nu)
+        self.safety_priority = 0.0
+        self.safety_timer = 0
+        
     def step(self, t, y, r, quality):
+        # Ensure inputs are numpy arrays
+        y = np.array(y, dtype=float)
+        r = np.array(r, dtype=float)
+        quality = np.array(quality, dtype=bool)
+        
         # Handle bad measurements - use previous value if quality is False
-        y_clean = np.copy(y)
-        for i in range(self.n_outputs):
+        for i in range(self.ny):
             if not quality[i]:
-                y_clean[i] = self.prev_measurement[i]
+                y[i] = self.prev_y[i]
             else:
-                self.prev_measurement[i] = y_clean[i]
-        
-        # Interpolate setpoint based on time
-        setpoint = np.array([np.nan, np.nan, np.nan])
-        for i in range(len(self.setpoint_schedule) - 1):
-            t_start, sp_start = self.setpoint_schedule[i]
-            t_end, sp_end = self.setpoint_schedule[i + 1]
-            if t_start <= t < t_end:
-                if t_end == t_start:
-                    setpoint = sp_start
-                else:
-                    frac = (t - t_start) / (t_end - t_start)
-                    setpoint = sp_start + frac * (sp_end - sp_start)
-                break
-        else:
-            # Use last setpoint if beyond schedule
-            setpoint = self.setpoint_schedule[-1][1]
-        
-        # Only use scored setpoints (non-nan)
-        for i in range(self.n_outputs):
-            if not np.isnan(r[i]):
-                setpoint[i] = r[i]
+                self.prev_y[i] = y[i]
         
         # Calculate error
-        error = setpoint - y_clean
+        error = r - y
         
-        # Update integral with anti-windup
-        for i in range(self.n_outputs):
-            # Only integrate if not saturated or if error opposes saturation
-            if (self.prev_control[i] >= self.actuator_limits[1] and error[i] > 0) or \
-               (self.prev_control[i] <= self.actuator_limits[0] and error[i] < 0):
-                # Saturation - don't integrate
-                pass
+        # Integral action with aggressive anti-windup
+        for i in range(self.ny):
+            # Only integrate if actuators are safely away from limits
+            if (self.prev_output[0] > self.actuator_limits[0] + 0.1 and 
+                self.prev_output[0] < self.actuator_limits[1] - 0.1 and
+                self.prev_output[1] > self.actuator_limits[0] + 0.1 and 
+                self.prev_output[1] < self.actuator_limits[1] - 0.1 and
+                self.prev_output[2] > self.actuator_limits[0] + 0.1 and 
+                self.prev_output[2] < self.actuator_limits[1] - 0.1):
+                self.integral_terms[i] += error[i] * self.dt
             else:
-                self.integral[i] += error[i] * self.dt
-                # Anti-windup: clamp integral term
-                self.integral[i] = np.clip(self.integral[i], -self.integral_windup_limit, self.integral_windup_limit)
+                # Aggressive anti-windup - reduce integral term when near saturation
+                self.integral_terms[i] -= error[i] * self.dt * 0.5
+            
+            # Clamp integral term tightly
+            self.integral_terms[i] = np.clip(self.integral_terms[i], 
+                                            -self.integral_windup_limit, 
+                                            self.integral_windup_limit)
         
-        # Derivative term with filtering
-        if t > self.last_t:
-            dt = t - self.last_t
-            if dt > 0:
-                # Calculate raw derivative
-                raw_derivative = (y_clean - self.prev_measurement) / dt
-                # Apply exponential smoothing filter to each output independently
-                alpha = 0.05  # Very conservative filter for noisy measurements
-                self.derivative_filter = alpha * raw_derivative + (1 - alpha) * self.derivative_filter
-            else:
-                self.derivative_filter = np.zeros(self.n_outputs)
+        # Proportional and integral control
+        u_p = np.zeros(self.nu)
+        u_i = np.zeros(self.nu)
+        
+        # Proportional contribution (reduced gain)
+        for i in range(self.ny):
+            for j in range(self.nu):
+                u_p[j] += self.Kp_gain * self.Kp[i, j] * error[i]
+        
+        # Integral contribution (very slow)
+        for i in range(self.ny):
+            for j in range(self.nu):
+                u_i[j] += self.Ki_gain * self.Kp[i, j] * self.integral_terms[i]
+        
+        # Combine control actions
+        u_raw = u_p + u_i
+        
+        # Slew rate limiting and saturation
+        u_final = np.zeros(self.nu)
+        for j in range(self.nu):
+            # Apply slew limit
+            delta_u = u_raw[j] - self.last_u[j]
+            delta_u = np.clip(delta_u, -self.max_actuator_change, self.max_actuator_change)
+            u_final[j] = self.last_u[j] + delta_u
+            
+            # Apply hard limits
+            u_final[j] = np.clip(u_final[j], self.actuator_limits[0], self.actuator_limits[1])
+        
+        # SAFETY CRITICAL: TI-103 (bottoms reflux temperature) must be >= -0.5
+        # FCV-203 (u[2]) is the primary control for TI-103
+        if y[2] < -0.45:  # approaching safety limit
+            self.safety_priority = 0.8
+            self.safety_timer = 50  # maintain priority for 50 steps
+        elif y[2] < -0.4:
+            self.safety_priority = 0.5
+            self.safety_timer = 30
+        elif y[2] < -0.35:
+            self.safety_priority = 0.2
+            self.safety_timer = 15
         else:
-            self.derivative_filter = np.zeros(self.n_outputs)
+            self.safety_timer = max(0, self.safety_timer - 1)
+            self.safety_priority = max(0, self.safety_priority - 0.02)
         
-        # PID control calculation
-        control = np.zeros(self.n_outputs)
-        for i in range(self.n_outputs):
-            P = self.Kp[i] * error[i]
-            I = self.Ki[i] * self.integral[i]
-            D = self.Kd[i] * self.derivative_filter[i]
-            control[i] = P + I + D
+        # Apply safety override: prioritize FCV-203 to increase temperature
+        if self.safety_priority > 0:
+            # Force FCV-203 to increase
+            u_final[2] = max(u_final[2], 0.2)
+            # Reduce other outputs to compensate and avoid total saturation
+            if u_final[0] > 0.1:
+                u_final[0] -= self.safety_priority * 0.1
+            if u_final[1] > 0.1:
+                u_final[1] -= self.safety_priority * 0.1
+            # Re-apply limits after compensation
+            u_final[0] = np.clip(u_final[0], self.actuator_limits[0], self.actuator_limits[1])
+            u_final[1] = np.clip(u_final[1], self.actuator_limits[0], self.actuator_limits[1])
+            u_final[2] = np.clip(u_final[2], self.actuator_limits[0], self.actuator_limits[1])
         
-        # Apply actuator slew limits
-        control = np.clip(control, 
-                         self.prev_control - self.max_actuator_change, 
-                         self.prev_control + self.max_actuator_change)
-        
-        # Apply hard actuator limits
-        control = np.clip(control, self.actuator_limits[0], self.actuator_limits[1])
-        
-        # Safety override for bottoms reflux temperature (index 2)
-        # Hard floor of -0.5 - if we're close to violation, force positive duty
-        if y_clean[2] < -0.48:  # Safety margin
-            # Increase FCV-203 (bottoms reflux duty) to raise temperature
-            control[2] = max(control[2], 0.08)
-        
-        # Ensure output is always a numpy array of floats
-        control = np.array([float(x) for x in control])
+        # Prevent chattering with deadband
+        for j in range(self.nu):
+            if abs(u_final[j]) < self.deadband:
+                u_final[j] = 0.0
         
         # Update state
-        self.prev_control = np.copy(control)
-        self.prev_error = error
-        self.last_t = t
+        self.prev_error = error.copy()
+        self.last_u = u_final.copy()
+        self.prev_output = u_final.copy()
         
-        return control
+        return u_final

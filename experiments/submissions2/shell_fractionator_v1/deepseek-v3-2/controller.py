@@ -5,192 +5,285 @@ class Controller:
         self.brief = brief
         self.sample_time = brief.sample_time
         
-        # Number of inputs, outputs
-        self.n_inputs = 3
-        self.n_outputs = 3
+        # FIXED: Access model_hint correctly from brief
+        # The brief has model_hint as an attribute, not a key
+        model_hint = brief.model_hint
         
-        # Conservative PID tuning - fixed gains for robustness
-        # More conservative to prevent safety violations
-        self.kp = np.array([0.3, 0.3, 0.4])  # Proportional gains for each loop
-        self.ki = np.array([0.01, 0.01, 0.015])  # Integral gains
-        self.kd = np.array([0.05, 0.05, 0.08])  # Derivative gains
+        # Extract model parameters with safe defaults
+        self.K = np.array(model_hint.get("K", [[4.05, 1.77, 5.88], [5.39, 5.72, 6.9], [4.38, 4.42, 7.2]]), dtype=np.float64)
+        self.tau = np.array(model_hint.get("TAU", [[50.0, 60.0, 50.0], [50.0, 60.0, 40.0], [33.0, 44.0, 19.0]]), dtype=np.float64)
+        self.L = np.array(model_hint.get("L", [[27.0, 28.0, 27.0], [18.0, 14.0, 15.0], [20.0, 22.0, 0.0]]), dtype=np.float64)
+        self.Kd = np.array(model_hint.get("KD", [[1.2, 1.44], [1.52, 1.83], [1.14, 1.26]]), dtype=np.float64)
+        self.taud = np.array(model_hint.get("TAUD", [[45.0, 40.0], [25.0, 20.0], [27.0, 32.0]]), dtype=np.float64)
+        self.Ld = np.array(model_hint.get("LD", [[27.0, 27.0], [15.0, 15.0], [27.0, 32.0]]), dtype=np.float64)
         
-        # State variables
-        self.prev_error = None
-        self.integral = None
-        self.prev_output = None
-        self.prev_measurement = None
-        self.filtered_measurement = None
-        self.last_good_y = None
-        self.prev_derivative = None
-        self.safety_integral = None
+        # Controller dimensions
+        self.n_y = 3  # measurements
+        self.n_u = 3  # actuators
+        self.n_d = 2  # disturbances
         
-        # Filter parameters - more filtering for safety
-        self.filter_tau = 15.0  # Conservative measurement filter
-        self.filter_alpha = 0.0
+        # Initialize controller parameters
+        self._initialize_controller()
         
-        # Derivative filter - more filtering
-        self.derivative_tau = 8.0
-        self.derivative_alpha = 0.0
+        # Initialize state variables
+        self.reset()
+    
+    def _initialize_controller(self):
+        """Initialize PID controller parameters with anti-windup."""
+        # Conservative PID tuning based on nominal model
+        # Using lambda tuning method (SIMC) for robustness
+        lambda_factor = 2.0  # Robustness factor
         
-        # Anti-windup parameters
-        self.integral_max = 1.5
-        self.integral_min = -1.5
+        # Initialize PID parameters for each output
+        self.kp = np.zeros((self.n_u, self.n_y))
+        self.ki = np.zeros((self.n_u, self.n_y))
+        self.kd = np.zeros((self.n_u, self.n_y))
         
-        # Output constraints
-        self.output_min = np.array([-0.5, -0.5, -0.5])
-        self.output_max = np.array([0.5, 0.5, 0.5])
+        # Decentralized PID tuning - each output controlled by one input
+        # y0 (top composition) controlled by u0 (top draw)
+        # y1 (side composition) controlled by u1 (side draw)
+        # y2 (temperature) controlled by u2 (bottoms reflux)
         
-        # Safety constraint for TI-103 (y[2]) - must stay above -0.5
-        self.temp_min = -0.5
-        self.temp_safety_margin = 0.1  # Start acting at -0.4
+        # Pairings based on relative gain analysis (simplified)
+        # Using diagonal pairing
+        for i in range(self.n_y):
+            # Use the diagonal process gain
+            Kp = self.K[i, i]
+            tau = self.tau[i, i]
+            L = self.L[i, i]
+            
+            if tau > 0 and L > 0:
+                # SIMC PI tuning rules
+                tau_c = max(lambda_factor * L, tau/10)
+                self.kp[i, i] = tau / (Kp * tau_c)
+                self.ki[i, i] = self.kp[i, i] / min(tau, 4*tau_c)
+            else:
+                # Conservative default
+                self.kp[i, i] = 0.5
+                self.ki[i, i] = 0.1
         
-        # Rate limiting - more conservative
-        self.max_rate = 0.015
+        # Add small cross-coupling for better MIMO performance
+        for i in range(self.n_y):
+            for j in range(self.n_u):
+                if i != j and abs(self.K[i, j]) > 0:
+                    self.kp[i, j] = 0.1 * self.kp[i, i] * np.sign(self.K[i, j])
         
-        # Safety controller parameters
-        self.safety_kp = 0.8
-        self.safety_ki = 0.05
+        # Anti-windup tracking time constant
+        self.taw = 10.0
         
-        # Store setpoint schedule for reference
-        self.setpoint_schedule = getattr(brief, 'setpoint_schedule', [])
+        # Derivative filter time constant
+        self.tau_f = 2.0  # Increased for better noise filtering
         
+        # Initialize disturbance compensation
+        self.dist_comp_gain = np.zeros((self.n_u, self.n_d))
+        for i in range(self.n_u):
+            for j in range(self.n_d):
+                if self.taud[i, j] > 0:
+                    self.dist_comp_gain[i, j] = -self.Kd[i, j] / self.K[i, i] if abs(self.K[i, i]) > 1e-6 else 0
+        
+        # Setpoint filter time constant
+        self.tau_sp = 5.0
+        
+        # Control limits
+        self.u_min = np.array([-0.5, -0.5, -0.5])
+        self.u_max = np.array([0.5, 0.5, 0.5])
+        
+        # Rate limits (per sample) - from brief: actuator duty limit of 0.016
+        self.rate_limit = 0.016
+        
+        # Safety constraint for y[2] (temperature) - from brief: y3 must stay within [-0.5, inf]
+        self.y2_min = -0.5
+        
+        # Initialize filtered values
+        self.prev_u = np.zeros(self.n_u)
+        self.prev_y = np.zeros(self.n_y)
+        self.prev_r = np.zeros(self.n_y)
+        self.prev_d = np.zeros(self.n_d)
+        
+        # Store previous actuator values for rate limiting
+        self.last_u = np.zeros(self.n_u)
+    
     def reset(self):
-        """Reset controller state for new scenario"""
-        self.prev_error = np.zeros(self.n_outputs)
-        self.integral = np.zeros(self.n_outputs)
-        self.prev_output = np.zeros(self.n_inputs)
-        self.prev_measurement = np.zeros(self.n_outputs)
-        self.filtered_measurement = np.zeros(self.n_outputs)
-        self.last_good_y = np.zeros(self.n_outputs)
-        self.prev_derivative = np.zeros(self.n_outputs)
-        self.safety_integral = 0.0
+        """Reset controller state."""
+        # Integral terms
+        self.integral = np.zeros(self.n_y)
         
-        # Calculate filter constants
-        self.filter_alpha = np.exp(-self.sample_time / self.filter_tau)
-        self.derivative_alpha = np.exp(-self.sample_time / self.derivative_tau)
+        # Previous errors for derivative action
+        self.prev_error = np.zeros(self.n_y)
         
-        # Initialize outputs at steady state (bumpless transfer)
-        self.prev_output[:] = 0.0
+        # Previous measurements for filtering
+        self.prev_ym = np.zeros(self.n_y)
         
+        # Filtered setpoints
+        self.filtered_r = np.zeros(self.n_y)
+        
+        # Filtered measurements
+        self.filtered_y = np.zeros(self.n_y)
+        
+        # Derivative filter states
+        self.deriv_state = np.zeros(self.n_y)
+        
+        # Anti-windup tracking states
+        self.aw_state = np.zeros(self.n_u)
+        
+        # Previous control output
+        self.prev_output = np.array([0.0, 0.0, 0.0])
+        
+        # Disturbance estimate
+        self.dist_est = np.zeros(self.n_d)
+        
+        # Time since last good measurement
+        self.bad_sample_count = np.zeros(self.n_y, dtype=int)
+        
+        # Initialize filtered values
+        self.prev_u = np.zeros(self.n_u)
+        self.prev_y = np.zeros(self.n_y)
+        self.prev_r = np.zeros(self.n_y)
+        self.prev_d = np.zeros(self.n_d)
+        
+        # Store previous actuator values for rate limiting
+        self.last_u = np.array([0.0, 0.0, 0.0])
+        
+        # Safety monitoring
+        self.safety_violation = False
+        
+        # Initialize with bumpless start - from brief: actuators start at [0.0, 0.0, 0.0]
+        self.last_u = np.array([0.0, 0.0, 0.0])
+    
     def step(self, t, y, r, quality):
-        """Main control step"""
-        # Handle bad measurements - use last good value
-        current_y = np.copy(y)
-        for i in range(self.n_outputs):
+        """Main control step."""
+        # Handle bad measurements
+        y_processed = self._handle_bad_measurements(y, quality)
+        
+        # Filter measurements
+        alpha = self.sample_time / (self.tau_f + self.sample_time)
+        self.filtered_y = alpha * y_processed + (1 - alpha) * self.filtered_y
+        
+        # Filter setpoints
+        alpha_sp = self.sample_time / (self.tau_sp + self.sample_time)
+        # Handle NaN setpoints - use previous filtered value
+        r_valid = np.where(np.isnan(r), self.filtered_r, r)
+        self.filtered_r = alpha_sp * r_valid + (1 - alpha_sp) * self.filtered_r
+        
+        # Calculate errors
+        error = self.filtered_r - self.filtered_y
+        
+        # Update integral terms with anti-windup
+        self._update_integral(error)
+        
+        # Calculate derivative term
+        deriv = self._calculate_derivative(error)
+        
+        # Compute preliminary control action
+        u_prelim = self._compute_control_action(error, deriv)
+        
+        # Apply safety constraint for temperature
+        u_prelim = self._apply_safety_constraint(u_prelim, y_processed[2])
+        
+        # Apply rate limiting
+        u_limited = self._apply_rate_limits(u_prelim)
+        
+        # Apply saturation with anti-windup tracking
+        u_sat = np.clip(u_limited, self.u_min, self.u_max)
+        
+        # Update anti-windup states
+        self.aw_state += (u_sat - u_limited) / self.taw
+        
+        # Store for next iteration
+        self.prev_error = error.copy()
+        self.prev_ym = y_processed.copy()
+        self.prev_output = u_sat.copy()
+        self.last_u = u_sat.copy()
+        
+        return u_sat
+    
+    def _handle_bad_measurements(self, y, quality):
+        """Handle bad or stale measurements."""
+        y_processed = y.copy()
+        
+        for i in range(self.n_y):
             if not quality[i]:
-                if self.last_good_y is not None:
-                    current_y[i] = self.last_good_y[i]
+                # Bad measurement - use previous filtered value
+                self.bad_sample_count[i] += 1
+                if self.bad_sample_count[i] == 1:
+                    # First bad sample, use last good measurement
+                    y_processed[i] = self.filtered_y[i]
                 else:
-                    current_y[i] = 0.0
+                    # Multiple bad samples, hold last value
+                    y_processed[i] = self.filtered_y[i]
             else:
-                self.last_good_y[i] = y[i]
+                # Good measurement
+                self.bad_sample_count[i] = 0
         
-        # Apply measurement filtering
-        if self.prev_measurement is not None:
-            for i in range(self.n_outputs):
-                self.filtered_measurement[i] = (self.filter_alpha * self.filtered_measurement[i] + 
-                                               (1 - self.filter_alpha) * current_y[i])
-        else:
-            self.filtered_measurement = np.copy(current_y)
+        return y_processed
+    
+    def _update_integral(self, error):
+        """Update integral terms with anti-windup."""
+        for i in range(self.n_y):
+            # Only integrate if channel has a setpoint (not NaN)
+            if not np.isnan(error[i]):
+                # Add anti-windup compensation
+                aw_comp = 0.0
+                for j in range(self.n_u):
+                    aw_comp += self.kp[i, j] * self.aw_state[j]
+                
+                self.integral[i] += self.ki[i, i] * error[i] * self.sample_time + aw_comp * self.sample_time
+                
+                # Limit integral term to prevent windup
+                int_max = 2.0 / max(abs(self.ki[i, i]), 1e-6)
+                self.integral[i] = np.clip(self.integral[i], -int_max, int_max)
+    
+    def _calculate_derivative(self, error):
+        """Calculate filtered derivative term."""
+        deriv = np.zeros(self.n_y)
         
-        # Calculate errors (only for scored channels)
-        error = np.zeros(self.n_outputs)
-        for i in range(self.n_outputs):
-            if not np.isnan(r[i]):
-                error[i] = r[i] - self.filtered_measurement[i]
-            else:
-                error[i] = 0.0
-        
-        # Initialize on first step
-        if self.prev_error is None:
-            self.prev_error = np.copy(error)
-            self.integral = np.zeros(self.n_outputs)
-            self.prev_derivative = np.zeros(self.n_outputs)
-        
-        # Update integral with conditional integration
-        for i in range(self.n_outputs):
-            # Only integrate if not near saturation and error is reasonable
-            if abs(error[i]) < 0.3 and abs(self.integral[i]) < self.integral_max * 0.8:
-                self.integral[i] += self.ki[i] * error[i] * self.sample_time
+        for i in range(self.n_y):
+            # Filter derivative term
+            error_diff = error[i] - self.prev_error[i]
+            self.deriv_state[i] = (error_diff / self.sample_time - self.deriv_state[i]) * self.sample_time / self.tau_f
             
-            # Clamp integral
-            self.integral[i] = np.clip(self.integral[i], self.integral_min, self.integral_max)
+            deriv[i] = self.kd[i, i] * self.deriv_state[i]
         
-        # Calculate derivative with filtering
-        derivative = np.zeros(self.n_outputs)
-        if self.prev_error is not None:
-            raw_derivative = (error - self.prev_error) / self.sample_time
+        return deriv
+    
+    def _compute_control_action(self, error, deriv):
+        """Compute MIMO control action."""
+        u = np.zeros(self.n_u)
+        
+        # Main diagonal control
+        for i in range(self.n_u):
+            # PID contribution
+            pid_contrib = 0.0
+            for j in range(self.n_y):
+                if not np.isnan(error[j]):
+                    pid_contrib += self.kp[i, j] * error[j]
             
-            for i in range(self.n_outputs):
-                derivative[i] = (self.derivative_alpha * self.prev_derivative[i] + 
-                               (1 - self.derivative_alpha) * raw_derivative[i])
-        
-        # Calculate PID output for each loop (diagonal control)
-        u_pid = np.zeros(self.n_inputs)
-        
-        for i in range(self.n_inputs):
-            if i < self.n_outputs:
-                u_pid[i] = (self.kp[i] * error[i] + 
-                          self.integral[i] + 
-                          self.kd[i] * derivative[i])
-        
-        # Apply output constraints
-        u = np.clip(u_pid, self.output_min, self.output_max)
-        
-        # Rate limiting
-        if self.prev_output is not None:
-            for i in range(self.n_inputs):
-                change = u[i] - self.prev_output[i]
-                if abs(change) > self.max_rate:
-                    u[i] = self.prev_output[i] + np.sign(change) * self.max_rate
-        
-        # CRITICAL: Safety controller for TI-103 (bottoms reflux temperature)
-        # This takes priority over normal control when temperature is low
-        temp_measurement = self.filtered_measurement[2]
-        
-        # Calculate safety error (how far below minimum we are)
-        safety_error = max(self.temp_min - temp_measurement, 0)
-        
-        # If we're getting close to the limit, start acting
-        if temp_measurement < (self.temp_min + self.temp_safety_margin):
-            # Update safety integral
-            self.safety_integral += safety_error * self.sample_time
-            self.safety_integral = min(self.safety_integral, 1.0)  # Limit integral
-            
-            # Calculate safety control action
-            safety_action = (self.safety_kp * safety_error + 
-                           self.safety_ki * self.safety_integral)
-            
-            # Apply safety action to bottoms reflux (actuator 2)
-            # This OVERRIDES the normal PID control for this actuator
-            u[2] = max(u[2], safety_action)
-            
-            # If we're in serious violation, use stronger action
-            if temp_measurement < self.temp_min:
-                # Emergency override - use significant positive action
-                u[2] = max(u[2], 0.25)
-        
-        # Also prevent temperature from getting too high
-        if temp_measurement > 0.4:  # Getting too hot
-            u[2] = min(u[2], -0.05)  # Reduce reflux
-        
-        # Ensure we don't violate actuator constraints
-        u = np.clip(u, self.output_min, self.output_max)
-        
-        # Additional safety: if temperature is critically low, use all actuators
-        if temp_measurement < (self.temp_min - 0.1):  # Well below limit
-            # Use top and side draws to help (reduce them to increase temperature)
-            u[0] = max(u[0], -0.2)  # Reduce top draw
-            u[1] = max(u[1], -0.2)  # Reduce side draw
-        
-        # Final constraint check
-        u = np.clip(u, self.output_min, self.output_max)
-        
-        # Update state variables
-        self.prev_error = np.copy(error)
-        self.prev_output = np.copy(u)
-        self.prev_measurement = np.copy(current_y)
-        self.prev_derivative = np.copy(derivative)
+            u[i] = pid_contrib + self.integral[i] + deriv[i]
         
         return u
+    
+    def _apply_safety_constraint(self, u, y_temp):
+        """Apply safety constraint for temperature."""
+        # If temperature is approaching lower limit, adjust bottoms reflux
+        safety_margin = 0.05  # Reduced margin for faster response
+        
+        # Check if temperature is below minimum
+        if y_temp < self.y2_min:
+            # Emergency: temperature below minimum, increase reflux significantly
+            u[2] = 0.3  # Moderate increase
+        elif y_temp < self.y2_min + safety_margin:
+            # Warning: temperature approaching minimum
+            u[2] = max(u[2], 0.15)  # Ensure minimum reflux
+        
+        return u
+    
+    def _apply_rate_limits(self, u):
+        """Apply rate limits to control signals."""
+        u_limited = u.copy()
+        
+        for i in range(self.n_u):
+            delta = u[i] - self.last_u[i]
+            delta_limited = np.clip(delta, -self.rate_limit, self.rate_limit)
+            u_limited[i] = self.last_u[i] + delta_limited
+        
+        return u_limited

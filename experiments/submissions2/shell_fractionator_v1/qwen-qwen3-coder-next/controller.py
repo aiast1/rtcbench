@@ -7,156 +7,174 @@ class Controller:
         self.n_u = 3
         self.n_d = 2
         
-        # Conservative tuning for robustness across all scenarios
-        self.tau_c = 120.0  # closed-loop time constant (slower for robustness)
+        # Nominal plant model (will be used for tuning, not for control)
+        self.K = np.array([
+            [4.05, 1.77, 5.88],
+            [5.39, 5.72, 6.9],
+            [4.38, 4.42, 7.2]
+        ])
+        self.TAU = np.array([
+            [50.0, 60.0, 50.0],
+            [50.0, 60.0, 40.0],
+            [33.0, 44.0, 19.0]
+        ])
+        self.L = np.array([
+            [27.0, 28.0, 27.0],
+            [18.0, 14.0, 15.0],
+            [20.0, 22.0, 0.0]
+        ])
+        self.KD = np.array([
+            [1.2, 1.44],
+            [1.52, 1.83],
+            [1.14, 1.26]
+        ])
+        self.TAUD = np.array([
+            [45.0, 40.0],
+            [25.0, 20.0],
+            [27.0, 32.0]
+        ])
+        self.LD = np.array([
+            [27.0, 27.0],
+            [15.0, 15.0],
+            [27.0, 32.0]
+        ])
         
-        # PID parameters per loop (PI control with conservative tuning)
-        self.Kc = np.zeros(self.n_y)
-        self.tau_I = np.zeros(self.n_y)
+        # Controller tuning parameters (conservative for robustness)
+        self.tau_c = 60.0  # closed-loop time constant
         
-        # Compute tuning parameters using Ziegler-Nichols-style tuning with safety margins
-        for i in range(self.n_y):
-            # Use nominal plant model for tuning (conservative approach)
-            K_p = 5.0  # typical gain
-            theta = 20.0  # typical dead time
-            tau = 50.0  # typical time constant
-            
-            # Ziegler-Nichols PI tuning with significant safety factor
-            Kc = (1.0 / K_p) * (tau / (1.2 * theta))
-            tau_I = tau * (1.2 * theta + tau) / (1.8 * theta)
-            
-            # Apply aggressive conservative scaling
-            self.Kc[i] = Kc * 0.15  # Very reduced gain for robustness
-            self.tau_I[i] = max(tau_I, 100.0)  # Very long integral time
+        # PID parameters per loop (decoupled PI/PID control)
+        # Using Ziegler-Nichols tuning with safety margins
+        self.Kc = np.zeros(3)
+        self.tau_i = np.zeros(3)
+        self.tau_d = np.zeros(3)
         
-        # Actuator constraints
-        self.u_min = np.array([-0.5, -0.5, -0.5])
-        self.u_max = np.array([0.5, 0.5, 0.5])
-        self.u_slew_limit = 0.0112  # maximum change per step
+        # Loop 0 (top composition)
+        self.Kc[0] = 0.15 / self.K[0, 0]  # ~0.037
+        self.tau_i[0] = self.TAU[0, 0]
+        self.tau_d[0] = 0.0
         
-        # Safety constraint for y3 (bottoms reflux temperature)
-        self.y3_min = -0.5
+        # Loop 1 (side composition)
+        self.Kc[1] = 0.15 / self.K[1, 1]  # ~0.026
+        self.tau_i[1] = self.TAU[1, 1]
+        self.tau_d[1] = 0.0
         
-        # Disturbance rejection (simple integral action on errors)
-        self.integral = np.zeros(self.n_y)
-        self.last_error = np.zeros(self.n_y)
-        self.last_u = np.zeros(self.n_u)
+        # Loop 2 (bottoms temperature)
+        self.Kc[2] = 0.15 / self.K[2, 2]  # ~0.021
+        self.tau_i[2] = self.TAU[2, 2]
+        self.tau_d[2] = 0.0
         
-        # Setpoint schedule
-        self._build_setpoint_schedule()
+        # Anti-windup and safety
+        self.u_max = 0.5
+        self.u_min = -0.5
+        self.du_max = 0.016  # actuator duty limit
         
-    def _build_setpoint_schedule(self):
-        # Build setpoint schedule as piecewise linear segments
-        self.sp_times = [0, 120, 350, 440, 600]
-        self.sp_values = [
-            np.array([0.0, 0.0, 0.0]),
-            np.array([0.2, -0.15, 0.0]),
-            np.array([-0.1, 0.1, 0.05]),
-            np.array([-0.1, 0.1, 0.05]),  # end of ramp
-            np.array([0.0, 0.0, 0.0])
-        ]
-        
-    def _get_setpoint(self, t):
-        # Interpolate setpoints at time t
-        if t < self.sp_times[0]:
-            return self.sp_values[0].copy()
-        if t >= self.sp_times[-1]:
-            return self.sp_values[-1].copy()
-        
-        # Find segment
-        for i in range(len(self.sp_times) - 1):
-            if self.sp_times[i] <= t < self.sp_times[i + 1]:
-                # Linear interpolation
-                t0, t1 = self.sp_times[i], self.sp_times[i + 1]
-                sp0, sp1 = self.sp_values[i], self.sp_values[i + 1]
-                frac = (t - t0) / (t1 - t0)
-                return sp0 + frac * (sp1 - sp0)
-        
-        return self.sp_values[-1].copy()
+        # Initialize internal state
+        self.reset()
     
     def reset(self):
-        self.integral = np.zeros(self.n_y)
-        self.last_error = np.zeros(self.n_y)
-        self.last_u = np.array([0.0, 0.0, 0.0])
+        # Controller state
+        self.u = np.zeros(self.n_u)  # current control output
+        self.u_prev = np.zeros(self.n_u)  # previous control output
+        self.integral = np.zeros(self.n_u)  # integral terms
+        self.derivative = np.zeros(self.n_u)  # derivative terms
+        self.last_error = np.zeros(self.n_u)
+        self.last_measurement = np.zeros(self.n_y)
+        self.last_measurement_time = 0.0
         
+        # Disturbance estimates (simple low-pass filtered)
+        self.disturbance_estimate = np.zeros(self.n_d)
+        
+        # Time tracking
+        self.t_prev = 0.0
+        
+        # First call flag
+        self.first_call = True
+    
     def step(self, t, y, r, quality):
-        # Get setpoint (only for scored channels)
-        sp = self._get_setpoint(t)
+        dt = t - self.t_prev
+        if dt <= 0:
+            dt = self.sample_time
         
-        # Handle NaN setpoints (non-scored channels)
-        for i in range(self.n_y):
-            if np.isnan(r[i]):
-                sp[i] = y[i]  # track current value (no control)
+        # Initialize outputs
+        u_out = np.zeros(self.n_u)
         
-        # Compute errors (only for valid measurements)
-        error = np.zeros(self.n_y)
+        # Handle first call
+        if self.first_call:
+            self.u_prev = np.zeros(self.n_u)
+            self.last_measurement = y.copy()
+            self.last_measurement_time = t
+            self.t_prev = t
+            self.first_call = False
+            return self.u_prev.copy()
+        
+        # Update measurements
         for i in range(self.n_y):
             if quality[i]:
+                self.last_measurement[i] = y[i]
+        
+        # Calculate setpoint changes
+        sp = r.copy()
+        
+        # Calculate errors for scored channels
+        error = np.zeros(self.n_u)
+        for i in range(self.n_y):
+            if not np.isnan(sp[i]) and quality[i]:
                 error[i] = sp[i] - y[i]
             else:
-                # Use last error if measurement is bad
-                error[i] = self.last_error[i]
+                error[i] = 0.0
         
-        # PID calculation with anti-windup and safety constraints
-        u = np.zeros(self.n_u)
-        
-        for i in range(self.n_y):
+        # Update integral terms with anti-windup
+        for i in range(self.n_u):
+            # Calculate ideal PID output
             # Proportional term
             P = self.Kc[i] * error[i]
             
-            # Integral term with anti-windup (clamping)
-            I = self.integral[i] + (self.sample_time / self.tau_I[i]) * error[i]
+            # Integral term with anti-windup
+            if self.u_prev[i] >= self.u_max or self.u_prev[i] <= self.u_min:
+                # Anti-windup: stop integrating when saturated
+                I = self.integral[i]
+            else:
+                I = self.integral[i] + (self.Kc[i] / self.tau_i[i]) * error[i] * dt
             
-            # Anti-windup: limit integral action when actuator is saturated
-            u_prop = P
-            u_total = u_prop + I
+            # Derivative term (filtered derivative on measurement)
+            if quality[i] and self.tau_d[i] > 0:
+                # Filtered derivative: D = (tau_d / (tau_d + dt)) * (D_prev + (1 - alpha) * (y - y_prev) / dt)
+                alpha = self.tau_d[i] / (self.tau_d[i] + dt)
+                D = alpha * self.derivative[i] + (1 - alpha) * (-self.Kc[i] * (y[i] - self.last_measurement[i]) / dt)
+            else:
+                D = 0.0
             
-            # Check if actuator would saturate
-            if u_total > self.u_max[i] or u_total < self.u_min[i]:
-                # Limit integral term to prevent windup
-                if u_total > self.u_max[i]:
-                    I = max(I, self.u_max[i] - u_prop)
-                else:
-                    I = min(I, self.u_min[i] - u_prop)
+            # Total PID output
+            u_pid = P + I + D
             
-            # Derivative term (disabled due to noise concerns)
-            D = 0.0
+            # Apply anti-windup: limit integral term
+            if u_pid > self.u_max:
+                u_pid = self.u_max
+                I = max(0, I - (u_pid - self.Kc[i] * error[i] - D))
+            elif u_pid < self.u_min:
+                u_pid = self.u_min
+                I = min(0, I - (u_pid - self.Kc[i] * error[i] - D))
             
-            # Combined control action
-            u[i] = P + I + D
-            
-            # Update integral for next step
+            # Store updated integral
             self.integral[i] = I
-            self.last_error[i] = error[i]
+            self.derivative[i] = D
+            
+            # Apply rate limit
+            du = u_pid - self.u_prev[i]
+            if du > self.du_max:
+                du = self.du_max
+            elif du < -self.du_max:
+                du = -self.du_max
+            
+            u_out[i] = self.u_prev[i] + du
+            
+            # Apply actuator limits
+            u_out[i] = np.clip(u_out[i], self.u_min, self.u_max)
         
-        # Apply actuator constraints
-        u = np.clip(u, self.u_min, self.u_max)
+        # Update state
+        self.u_prev = u_out.copy()
+        self.last_measurement = y.copy()
+        self.last_measurement_time = t
+        self.t_prev = t
         
-        # Apply slew rate limits
-        du = u - self.last_u
-        du = np.clip(du, -self.u_slew_limit, self.u_slew_limit)
-        u = self.last_u + du
-        
-        # Safety constraint enforcement: ensure y3 stays above -0.5
-        # Use a more aggressive safety margin approach
-        if quality[2]:  # Only apply if we have a valid measurement
-            # Check if current y3 is near its safety limit
-            if y[2] < -0.35:  # 0.15 margin below the -0.5 limit
-                # Reduce control action that could push y3 lower
-                # FCV-203 (index 2) affects y3 most directly
-                # Reduce its action if it's trying to increase y3 too much
-                if u[2] > 0 and y[2] < -0.3:
-                    u[2] = min(u[2], 0.15)  # Cap at 0.15 to be safe
-                elif u[2] < 0 and y[2] < -0.3:
-                    u[2] = max(u[2], -0.05)  # Reduce negative action
-                    
-            # Even more conservative near the limit
-            if y[2] < -0.40:  # 0.10 margin below the -0.5 limit
-                u[2] = min(u[2], 0.1)  # Very conservative cap
-                if u[2] < 0:
-                    u[2] = 0.0  # Stop negative action
-                    
-        # Update last actuator values
-        self.last_u = u.copy()
-        
-        return u
+        return u_out
