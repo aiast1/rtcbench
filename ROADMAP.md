@@ -48,14 +48,22 @@ imported by `src/`, never in the wheel.
 This is also the honest use for a high-fidelity proprietary engine: not as a competitor, but
 as the second implementation that says whether an open reimplementation is faithful.
 
-### 3. Ship a blind-tier task
+### 3. Blind tier on a HARD plant  *(the easy half shipped)*
 
-Every shipped task is `mismatch` — the brief hands over nominal parameters. The **blind**
-tier, where a controller gets only a tag list, units, limits and a scan rate, is the design's
-flagship and is currently unexercised. It is one field in a task file; what it needs is a
-task designed so that system identification is genuinely required rather than optional.
+`four_tank_blind_v1` shipped and exercises the tier: same rig, same seeds, bit-identical
+anchors, model withheld. It produced a genuine negative result — the **median effect of
+withholding the model is -0.028**, four models better without it, six worse, ten unchanged.
+On that plant, being handed the parameters is worth approximately nothing.
 
-Expect scores to fall sharply. That is the point.
+That is interesting, and it also means the task is not yet testing what the tier is FOR. A
+four-tank is simple enough that a robustly-tuned PI does not need a model, so withholding one
+costs nothing. The tier only bites where system identification is genuinely required.
+
+Wanted: a blind variant of a plant where the model actually matters — `van_de_vusse` (whose
+gain reverses sign, so a controller that has not found the reversal will be tuned on the
+wrong side of it) or `deadtime_process` (where the delay must be estimated to be
+compensated). Expect a large negative effect there, and if there is not one, that is a real
+finding about how little models use the model.
 
 ### 4. A reference controller class beyond decentralized PID
 
@@ -73,15 +81,25 @@ then a proper constrained MPC for the tasks that deserve one. The task file carr
 PROVISIONAL banner until this lands, and `shell_fractionator_v1` should not be quoted as a
 ranking in the meantime.
 
-### 5. Fix the difficulty cliff
+### 5. Fill the gap between "hard" and "impossible"  *(partly resolved)*
 
-Three of 112 submissions beat their task's reference, and on `four_tank_nmp_v1` **nobody**
-did — 8 of 14 models hit the floor. A task where the whole field bottoms out ranks nothing;
-it only says "hard". Meanwhile `column_a` had no floored results at all.
+Relocating the score floor did most of the work here. The ladder by median score is now
+reasonably continuous down to zero:
 
-The suite currently has easy tasks and impossible ones and not much between. Wanted: a couple
-of plants pitched at the gap, and possibly a partial-credit look at whether the NMP task's
-floor is hiding real differences.
+    blind +0.84 · four_tank +0.66 · deadtime +0.35 · column_a +0.29 · pH +0.16
+    boiler 0.00 · van_de_vusse -0.00 · unstable -0.05 · nmp -1.88 · shell -7.58
+
+What remains is the tail. `four_tank_nmp` at a -1.88 median is a genuine cliff — the field
+does not merely find it hard, most of it is worse than doing nothing — and `shell` is
+provisional pending a better reference class (item 4).
+
+Two open questions rather than one task:
+
+- Is the NMP cliff real or an artefact of the wrong pairing being catastrophic rather than
+  merely bad? A submission that pairs diagonally is not slightly wrong, it is fighting
+  itself, so the distribution may be genuinely bimodal.
+- Is a task where the median model scores below zero still useful? It ranks the top of the
+  field fine. Arguably yes, and the aggregate is already protected by the per-task floor.
 
 ---
 
