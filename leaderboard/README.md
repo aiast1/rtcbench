@@ -1,6 +1,6 @@
 # Results
 
-**Current: `matrix_2026-08-23.json`** — 20 models x 10 tasks, every task hash pinned and
+**Current: `matrix_2026-08-24.json`** — 20 models x 10 tasks, every task hash pinned and
 verified current by `python experiments/check_stale.py`. The first results file in this repo
 that can prove which task versions produced it.
 

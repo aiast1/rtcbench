@@ -8,25 +8,24 @@
 #
 # rtcbench.task loads this automatically; nothing needs to reference it by path.
 
-# The 1.0 anchor. Published in full so it can be argued with — an under-tuned reference
-# inflates every score on this task, so how it was obtained is part of the task, not a
-# footnote.
-#
-# Reference: IDENTICAL to four_tank_v1's, deliberately. The anchor must not move between
-# the two tasks or the comparison they exist to support would be confounded.
-# Provenance: coordinate descent over (kp, ti, beta) per loop, minimizing mean scenario cost
-# on the first 6 seeds, then re-checked on all 20. The first draft of this file carried
-# kp=[1.50,1.35] ti=[30,40] by hand and was beaten by the naive example submission in
-# examples/pi_controller.py — which is exactly the failure the anchor is supposed to make
-# impossible, so it was retuned. The cost surface is flat across kp 1.8-2.2 and ti 20-25
-# (<1% spread), so these gains are a genuine optimum rather than a knife-edge fit; pushing
-# to kp=3.0 is 23% worse and nearly doubles valve movement.
-#
-# Tuned on the dev seeds it anchors. That is acceptable for a published, inspectable
-# baseline everyone competes against equally, and it is stated here rather than assumed.
+# Provenance: experiments/tune_reference.py, coordinate descent over (kp, ti, beta)
+# per loop. Best mean cost 0.005396 with zero gated scenarios.
+# Flatness: +C:/Program Files/Git/-25% on kp costs 0.7% to 3.7% -- a broad basin, not a fit to the seeds.
+# Tuned on ALL 20 seeds. The previous anchor (kp=2.0, ti=20) was tuned on 6 and came out 7%
+# weaker on the full ensemble -- an under-tuned anchor inflates every score on its task, so it
+# was retuned when the tuner's default changed.
+# 
+# max_total_variation is deliberately NOT retightened to 4x this reference's tv (which would be
+# 0.0113). The duty gate exists to catch pathological chattering -- the worst observed was 24x
+# the reference -- not to track how smooth the anchor happens to be. Tightening it here would
+# gate submissions that were previously fine, changing the task's difficulty for a reason that
+# has nothing to do with the anchor improving.
+# The reference defines 1.0 on this task, so an under-tuned one inflates every score
+# here forever. If a naive PI beats it, the reference is wrong, not the naive PI.
 reference:
   kind: pid
   pairing: [0, 1]
-  kp: [2.0, 2.0]
-  ti: [20.0, 20.0]
+  kp: [1.2, 1.2]
+  ti: [15.0, 20.0]
   beta: [1.0, 1.0]
+

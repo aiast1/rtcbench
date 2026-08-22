@@ -27,7 +27,7 @@ Twenty models each commissioned a controller for ten plants through one identica
 
 Blue beats doing nothing, red is worse than doing nothing, and the rightmost column is the
 suite score. **[The full report](leaderboard/report.html)** has all twenty models, per-cell
-detail and the raw [matrix](leaderboard/matrix_2026-08-23.json).
+detail and the raw [matrix](leaderboard/matrix_2026-08-24.json).
 
 Read it by **column**, not by row — a plant where most of the field is red is a plant that
 discriminates, and that is more useful than the ranking:
