@@ -512,70 +512,115 @@ def _esc(t: str) -> str:
 
 
 def matrix_svg(matrix: dict, task_order: list[str], dark: bool = False,
-               top: int = 12) -> str:
-    """Render the matrix as a standalone SVG a README can embed.
+               top: int | None = None, provenance: str = "") -> str:
+    """Render the matrix as a standalone SVG fit to publish.
 
-    GitHub will not run the HTML report — no scripts, no external CSS — but it renders SVG
-    in an <img>, and a <picture> element picks light or dark from the reader's theme. So the
-    same data gets a second, dumber rendering rather than a link nobody clicks.
+    GitHub will not run the HTML report — no scripts, no external CSS — but it renders SVG in
+    an <img>, and a <picture> element picks light or dark from the reader's theme. So the same
+    data gets a second, dumber rendering rather than a link nobody clicks.
 
     Theming is baked in per file rather than done with a CSS media query inside the SVG:
-    GitHub proxies images through camo, and a media query inside a proxied SVG does not see
-    the reader's theme. Two files and a <picture> is the thing that actually works.
+    GitHub proxies images through camo, and a media query inside a proxied SVG never sees the
+    reader's theme. Two files and a <picture> is what actually works.
+
+    Four things this fixes over the first version, each of which would have been a fair
+    objection to a published figure:
+
+    * **Every model, not the top 12.** The omitted eight were the worst performers, which
+      makes a truncated figure look like it is hiding something even when it is not.
+    * **A legend.** The colour ramp meant nothing without one.
+    * **`0.00` disambiguated.** It previously rendered identically for three different facts:
+      scored zero, gated on safety, and no submission at all. A whole row of `0.00` told the
+      reader nothing about which.
+    * **Provenance.** A figure with no date, model count or source file cannot be cited.
     """
     suite = matrix["suite"]
     per_task = matrix["per_task"]
-    models = sorted(suite, key=lambda m: -suite[m])[:top]
+    models = sorted(suite, key=lambda m: -suite[m])
+    if top:
+        models = models[:top]
     tasks = [t for t in task_order if t in per_task]
 
     fg = "#e8eaed" if dark else "#1a1a19"
     muted = "#9a9a94" if dark else "#6b6a66"
     bg = "#14171a" if dark else "#fcfcfb"
     grid = "#2a2e33" if dark else "#e8e7e3"
+    absent = "#22262b" if dark else "#f0efec"
 
-    label_w, cell_w, cell_h, gap = 132, 60, 22, 2
-    head_h, top_pad = 78, 34
-    width = label_w + len(tasks) * (cell_w + gap) + 76
-    height = top_pad + head_h + len(models) * (cell_h + gap) + 46
+    label_w, cell_w, cell_h, gap = 150, 62, 24, 2
+    head_h, top_pad, legend_h = 84, 44, 46
+    width = label_w + len(tasks) * (cell_w + gap) + 84
+    height = top_pad + head_h + len(models) * (cell_h + gap) + legend_h + 30
 
     o = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
          f'viewBox="0 0 {width} {height}" font-family="ui-monospace,SFMono-Regular,'
-         f'Menlo,Consolas,monospace">',
+         f'Menlo,Consolas,monospace" role="img" aria-label="RTCbench suite results heatmap">',
          f'<rect width="{width}" height="{height}" fill="{bg}"/>',
-         f'<text x="14" y="20" font-size="13" font-weight="600" fill="{fg}">'
-         f'RTCbench — suite results</text>',
-         f'<text x="14" y="{top_pad + 2}" font-size="9.5" fill="{muted}">'
-         f'0 = actuators frozen · 1 = well-tuned reference · higher is better</text>']
+         f'<text x="16" y="24" font-size="15" font-weight="600" fill="{fg}">'
+         f'RTCbench &#8212; closed-loop control, {len(models)} models &#215; '
+         f'{len(tasks)} plants</text>',
+         f'<text x="16" y="{top_pad}" font-size="10.5" fill="{muted}">'
+         f'0 = actuators frozen &#183; 1 = a well-tuned reference controller &#183; '
+         f'higher is better &#183; each cell is CVaR@10% over 20 parameter draws</text>']
 
     for j, t in enumerate(tasks):
         x = label_w + j * (cell_w + gap) + cell_w / 2
-        y = top_pad + head_h - 8
-        o.append(f'<text x="{x:.0f}" y="{y}" font-size="9" fill="{muted}" '
-                 f'transform="rotate(-38 {x:.0f} {y})">'
+        y = top_pad + head_h - 10
+        o.append(f'<text x="{x:.0f}" y="{y}" font-size="10" fill="{muted}" '
+                 f'transform="rotate(-40 {x:.0f} {y})">'
                  f'{_esc(TASK_LABEL.get(t, t))}</text>')
 
     for i, m in enumerate(models):
         y = top_pad + head_h + i * (cell_h + gap)
-        o.append(f'<text x="{label_w - 8}" y="{y + 15}" font-size="10.5" fill="{fg}" '
+        o.append(f'<text x="{label_w - 10}" y="{y + 16}" font-size="11" fill="{fg}" '
                  f'text-anchor="end">{_esc(PRETTY.get(m, m))}</text>')
         for j, t in enumerate(tasks):
-            e = per_task[t].get(m, {})
-            s = e.get("score")
+            e = per_task[t].get(m)
             x = label_w + j * (cell_w + gap)
-            if s is None:
-                o.append(f'<rect x="{x}" y="{y}" width="{cell_w}" height="{cell_h}" '
-                         f'rx="2" fill="{grid}"/>')
+            if e is None or e.get("note"):
+                # No submission at all, or a module that would not import. Rendered as a
+                # hole, not as a zero -- they are different claims about the model.
+                o.append(f'<rect x="{x}" y="{y}" width="{cell_w}" height="{cell_h}" rx="2" '
+                         f'fill="{absent}"/>')
+                o.append(f'<text x="{x + cell_w/2:.0f}" y="{y + 16}" font-size="9" '
+                         f'fill="{muted}" text-anchor="middle">&#8212;</text>')
                 continue
+            sc = e.get("score", 0.0)
             o.append(f'<rect x="{x}" y="{y}" width="{cell_w}" height="{cell_h}" rx="2" '
-                     f'fill="{cell_color(s, dark)}"/>')
-            shown = f"{s:.2f}" if -3 < s <= 1.5 else f"{s:.0f}"
-            o.append(f'<text x="{x + cell_w/2:.0f}" y="{y + 15}" font-size="8.5" '
-                     f'fill="{fg}" text-anchor="middle" opacity="0.85">{shown}</text>')
-        o.append(f'<text x="{label_w + len(tasks)*(cell_w+gap) + 8}" y="{y + 15}" '
-                 f'font-size="10" font-weight="600" fill="{fg}">{suite[m]:+.3f}</text>')
+                     f'fill="{cell_color(sc, dark)}"/>')
+            shown = f"{sc:.2f}" if -3 < sc <= 1.5 else f"{sc:.0f}"
+            o.append(f'<text x="{x + cell_w/2:.0f}" y="{y + 16}" font-size="9.5" '
+                     f'fill="{fg}" text-anchor="middle" opacity="0.9">{shown}</text>')
+            if e.get("gated"):
+                # A scenario zeroed on the safety envelope or the actuator duty limit is a
+                # categorically different result from a poor score, and must not look like one.
+                o.append(f'<circle cx="{x + cell_w - 6}" cy="{y + 6}" r="2.4" '
+                         f'fill="{fg}" opacity="0.75"/>')
+        o.append(f'<text x="{label_w + len(tasks)*(cell_w+gap) + 10}" y="{y + 16}" '
+                 f'font-size="11" font-weight="600" fill="{fg}">{suite[m]:+.3f}</text>')
 
-    o.append(f'<text x="{label_w}" y="{height - 16}" font-size="9" fill="{muted}">'
-             f'top {len(models)} of {len(suite)} models · rightmost column is the suite '
-             f'score · full results in leaderboard/report.html</text>')
+    # Legend: the colour ramp, then the two markers that are not colours.
+    ly = top_pad + head_h + len(models) * (cell_h + gap) + 16
+    o.append(f'<text x="16" y="{ly + 10}" font-size="9.5" fill="{muted}">score</text>')
+    lx = 62
+    for v, lab in ((-6.0, "≤-3"), (-0.9, "-1"), (-0.4, ""), (0.0, "0"),
+                   (0.5, ""), (0.9, ""), (1.15, "+1.2")):
+        o.append(f'<rect x="{lx}" y="{ly}" width="30" height="13" rx="2" '
+                 f'fill="{cell_color(v, dark)}"/>')
+        if lab:
+            o.append(f'<text x="{lx + 15}" y="{ly + 26}" font-size="8.5" fill="{muted}" '
+                     f'text-anchor="middle">{lab}</text>')
+        lx += 32
+    lx += 24
+    o.append(f'<circle cx="{lx + 4}" cy="{ly + 6}" r="2.4" fill="{fg}" opacity="0.75"/>')
+    o.append(f'<text x="{lx + 12}" y="{ly + 10}" font-size="9.5" fill="{muted}">'
+             f'a scenario gated on safety or actuator duty</text>')
+    lx += 250
+    o.append(f'<rect x="{lx}" y="{ly}" width="16" height="13" rx="2" fill="{absent}"/>')
+    o.append(f'<text x="{lx + 22}" y="{ly + 10}" font-size="9.5" fill="{muted}">'
+             f'no submission</text>')
+
+    o.append(f'<text x="16" y="{height - 10}" font-size="9" fill="{muted}">'
+             f'{_esc(provenance)}</text>')
     o.append("</svg>")
     return "".join(o)
