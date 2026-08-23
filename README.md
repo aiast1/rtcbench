@@ -18,48 +18,40 @@ Ten plants, 190 tests, two dependencies, no GPU. A full scoring pass runs on a l
 
 ## The current standing
 
-Twenty models each commissioned a controller for ten plants through one identical harness.
+Twenty models, ten plants, **three independent commissioning runs each** — 600 episodes
+through one identical harness.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="leaderboard/matrix-dark.svg">
-  <img alt="RTCbench suite results: top 12 models across 10 process plants, scored against a well-tuned reference controller" src="leaderboard/matrix-light.svg" width="100%">
+  <img alt="RTCbench suite results: 20 models across 10 process plants, three repeats each, scored against well-tuned reference controllers" src="leaderboard/matrix-light.svg" width="100%">
 </picture>
 
-Blue beats doing nothing, red is worse than doing nothing, and the rightmost column is the
-suite score. **[The full report](leaderboard/report.html)** has all twenty models, per-cell
-detail and the raw [matrix](leaderboard/matrix_2026-08-24.json).
-
-> **Read the ranking as provisional below the top.** Every number here is a single
-> commissioning run, and run-to-run spread is large: re-running three models three times
-> each gave spreads of **0.107** (fable-5), **0.265** (grok-4.6) and **0.407**
-> (nemotron-super) — and ranks 1 to 6 span only **0.297**. So the leader is real and the
-> middle of the table is not reliably ordered. A three-repeat run with error bars is in
-> progress; it will supersede this.
->
-> The spread itself is informative: the consistent models are the ones that never crash. A
-> submission that crashes on a task *sometimes* swings by that whole task's worth of score.
-
-Read it by **column**, not by row — a plant where most of the field is red is a plant that
-discriminates, and that is more useful than the ranking:
+Cells are means over three runs; the suite column carries the run-to-run interval. **[Full
+report](leaderboard/report.html)** · [aggregate](leaderboard/aggregate_2026-08-25.json).
 
 | | |
 |---|---|
-| Leader | **claude-fable-5**, suite **+0.553** — a second win, on a changed roster and a changed scoring rule |
-| Hardest column | `four_tank_nmp` — median **−1.88**, and only one model above zero |
-| Easiest | `four_tank_blind` — median **+0.84**, *higher* than the same plant with the model supplied |
-| Best single score | **+1.34**, Fable on `deadtime` — one of few results above a reference |
+| Leader | **claude-fable-5**, **+0.576 ± 0.041** — and the tightest spread in the field |
+| Genuinely separated ranks | **1–3 and 16–17 only**; everywhere else the intervals overlap |
+| Median run-to-run spread | **0.259**, against a top-six span of 0.368 |
+| Widest | **glm-5**, ranging +0.364 to −0.482 on identical tasks |
 
-That third row is the run's most interesting result. `four_tank_blind_v1` is the same rig,
-the same seeds and bit-identical anchors, with only the nominal model withheld. **The median
-effect of removing it is −0.028** — statistically nothing. Four models did better without a
-model, six did worse, ten were unchanged. On this plant, being handed the parameters is worth
-approximately zero, which is not what we expected to find.
+**Read the middle of the table as a band, not an order.** That is not a hedge — it is what
+three repeats measured, and it is why single-run leaderboards for this task are misleading.
+Running the suite once put gpt-5.6-sol at +0.337; its three-run mean is +0.471, a whole
+position band higher.
 
-To regenerate both views after a scoring pass:
+Two findings from the repeats are worth more than the ranking:
 
-```bash
-python experiments/report.py --matrix leaderboard/matrix_<date>.json --out leaderboard/report.html
-```
+**Variance is inherent, not a harness artefact.** Documenting the exact controller interface
+halved total crashes (244 → ~127 per run) and lifted nemotron-super from last to mid-table.
+It did **not** narrow the spreads — grok's actually widened, 0.265 → 0.335. If crash-driven
+noise had been the cause, removing the crashes would have collapsed it. So repeats are
+permanent policy here, not a one-off correction.
+
+**Reliability and control quality are separable.** Across the field, crashes correlate with
+suite score at −0.51 and gating at −0.55, while actuator movement correlates at +0.12.
+Whether a controller runs at all predicts its score better than how well it moves the valve.
 
 ## What makes a score here mean something
 

@@ -547,9 +547,11 @@ def matrix_svg(matrix: dict, task_order: list[str], dark: bool = False,
     grid = "#2a2e33" if dark else "#e8e7e3"
     absent = "#22262b" if dark else "#f0efec"
 
+    n_reps = int(matrix.get("repeats", 1) or 1)
+    reps = f' &#215; {n_reps} repeats' if n_reps > 1 else ''
     label_w, cell_w, cell_h, gap = 150, 62, 24, 2
     head_h, top_pad, legend_h = 84, 44, 46
-    width = label_w + len(tasks) * (cell_w + gap) + 84
+    width = label_w + len(tasks) * (cell_w + gap) + (128 if n_reps > 1 else 84)
     height = top_pad + head_h + len(models) * (cell_h + gap) + legend_h + 30
 
     o = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
@@ -558,10 +560,12 @@ def matrix_svg(matrix: dict, task_order: list[str], dark: bool = False,
          f'<rect width="{width}" height="{height}" fill="{bg}"/>',
          f'<text x="16" y="24" font-size="15" font-weight="600" fill="{fg}">'
          f'RTCbench &#8212; closed-loop control, {len(models)} models &#215; '
-         f'{len(tasks)} plants</text>',
+         f'{len(tasks)} plants{reps}</text>',
          f'<text x="16" y="{top_pad}" font-size="10.5" fill="{muted}">'
          f'0 = actuators frozen &#183; 1 = a well-tuned reference controller &#183; '
-         f'higher is better &#183; each cell is CVaR@10% over 20 parameter draws</text>']
+         f'higher is better &#183; each cell is CVaR@10% over 20 parameter draws'
+         + (f', averaged over {n_reps} independent commissioning runs' if n_reps > 1 else '')
+         + '</text>']
 
     for j, t in enumerate(tasks):
         x = label_w + j * (cell_w + gap) + cell_w / 2
@@ -596,8 +600,16 @@ def matrix_svg(matrix: dict, task_order: list[str], dark: bool = False,
                 # categorically different result from a poor score, and must not look like one.
                 o.append(f'<circle cx="{x + cell_w - 6}" cy="{y + 6}" r="2.4" '
                          f'fill="{fg}" opacity="0.75"/>')
-        o.append(f'<text x="{label_w + len(tasks)*(cell_w+gap) + 10}" y="{y + 16}" '
-                 f'font-size="11" font-weight="600" fill="{fg}">{suite[m]:+.3f}</text>')
+        sx = label_w + len(tasks) * (cell_w + gap) + 10
+        o.append(f'<text x="{sx}" y="{y + 16}" font-size="11" font-weight="600" '
+                 f'fill="{fg}">{suite[m]:+.3f}</text>')
+        a = (matrix.get("aggregate") or {}).get(m)
+        if a and a.get("n", 1) > 1:
+            # The interval is the point of a repeated run. Printing the mean alone would
+            # imply an ordering the data does not support -- which is the failure this
+            # whole run existed to correct.
+            o.append(f'<text x="{sx + 52}" y="{y + 16}" font-size="8.5" fill="{muted}">'
+                     f'&#177;{a["spread"]/2:.3f}</text>')
 
     # Legend: the colour ramp, then the two markers that are not colours.
     ly = top_pad + head_h + len(models) * (cell_h + gap) + 16
