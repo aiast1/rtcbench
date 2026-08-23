@@ -21,6 +21,7 @@ otherwise as permissive as MIT.
 ## Before you open a pull request
 
 ```bash
+rtcbench check --task tasks/<task>.yaml --controller <yours>.py   # submissions only
 python -m pytest tests/ -q                      # must be green
 rtcbench validate --task tasks/<anything you touched>.yaml   # must print PASS
 ```

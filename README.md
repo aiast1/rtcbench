@@ -128,10 +128,17 @@ class Controller:
 You get measurements and their quality flags. You never get the state vector — that
 omission is what keeps this a benchmark about control rather than about reading a state.
 
+**Run `rtcbench check` first.** Interface errors, not control errors, are what separate the
+bottom of the leaderboard from the top: crashes correlate with suite score at −0.51, and one
+model lost 40 of its 200 scenarios to `channel.min` (the field is `.lo`) and
+`brief.actuator_ranges` (which does not exist). The check constructs your controller, resets
+it and steps it five times, and prints the real field names when it fails.
+
 Start from [`examples/pi_controller.py`](examples/pi_controller.py), which is deliberately
 competent-but-unremarkable and says so.
 
 ```bash
+rtcbench check --task tasks/column_a_v1.yaml --controller mine.py   # does it even fit the interface?
 rtcbench show  --task tasks/column_a_v1.yaml          # the operating manual you'd be handed
 rtcbench run   --task tasks/column_a_v1.yaml --controller mine.py --out out/
 rtcbench score --task tasks/column_a_v1.yaml --controller mine.py --trends out/

@@ -129,6 +129,100 @@ bottomed out at the score clamp on a task that was merely under-specified rather
 """
 
 
+def cmd_check(args: argparse.Namespace) -> int:
+    """Pre-flight a controller against the interface before spending a scoring run on it.
+
+    `validate` checks a TASK is well-posed; this checks a SUBMISSION is well-formed. It was
+    added after measuring how much of the leaderboard was decided by interface errors rather
+    than by control: crashes correlate with suite score at -0.51, and one model lost 40 of
+    its 200 scenarios to `channel.min` (the field is `.lo`) and `brief.actuator_ranges`
+    (which does not exist). Both are reasonable guesses from someone who has never seen the
+    class, which means the benchmark was partly measuring whether a submission guessed this
+    codebase's naming conventions.
+
+    Fixing that has two halves. The brief now documents the exact dataclass, and this
+    command lets anyone confirm their controller constructs, resets and steps before
+    submitting. Available to everyone equally, so it changes what the benchmark measures --
+    control rather than API telepathy -- without favouring anybody.
+    """
+    task = Task.load(args.task)
+    plant = task.build_plant()
+    brief = task.brief(plant)
+    print(f"checking {args.controller} against {task.task_id}")
+
+    try:
+        factory, cid = load_controller(args.controller, sandbox=args.sandbox,
+                                       step_seconds=task.budget.step_seconds)
+    except Exception as exc:
+        print(f"  FAIL  module will not import: {type(exc).__name__}: {exc}")
+        return 1
+
+    try:
+        controller = factory(brief)
+    except Exception as exc:
+        print(f"  FAIL  __init__ raised: {type(exc).__name__}: {exc}")
+        print("        The brief is a dataclass. Its exact fields are:")
+        for line in _brief_fields():
+            print(f"          {line}")
+        plant.close()
+        return 1
+    print("  ok    constructs")
+
+    try:
+        controller.reset()
+    except Exception as exc:
+        print(f"  FAIL  reset() raised: {type(exc).__name__}: {exc}")
+        plant.close()
+        return 1
+    print("  ok    reset()")
+
+    obs = plant.reset(task.seeds[0])
+    n_u = plant.spec.n_u
+    for k in range(5):
+        t = k * task.sample_time
+        r = task.setpoint_vector(t, plant.spec.n_y)
+        try:
+            u = np.asarray(controller.step(t, obs.y.copy(), r.copy(), obs.quality.copy()),
+                           dtype=float).reshape(-1)
+        except Exception as exc:
+            print(f"  FAIL  step() raised on period {k}: {type(exc).__name__}: {exc}")
+            plant.close()
+            return 1
+        if u.shape != (n_u,):
+            print(f"  FAIL  step() returned shape {u.shape}, expected ({n_u},)")
+            plant.close()
+            return 1
+        if not np.all(np.isfinite(u)):
+            print(f"  FAIL  step() returned a non-finite value on period {k}: {u}")
+            plant.close()
+            return 1
+        obs = plant.step(u)
+    print(f"  ok    step() x5, returns {n_u} finite values")
+
+    lo, hi = plant.spec.actuator_lo(), plant.spec.actuator_hi()
+    if np.any(u < lo - 1e-9) or np.any(u > hi + 1e-9):
+        print(f"  warn  last output {u} is outside the actuator limits {lo}..{hi}. The "
+              "harness does not clip for you; the plant will.")
+    plant.close()
+    print("\n  PASS - the interface is satisfied.")
+    print("         This says nothing about whether it controls well; "
+          "run `rtcbench score` for that.")
+    return 0
+
+
+def _brief_fields() -> list[str]:
+    import dataclasses
+
+    from .controller import TaskBrief
+    from .plant import Channel
+
+    out = [f"brief.{f.name}" for f in dataclasses.fields(TaskBrief)]
+    out.append("brief.n_y, brief.n_u, brief.tags()")
+    out.append("each Channel has: " + ", ".join(f.name for f in dataclasses.fields(Channel))
+               + ", .span")
+    return out
+
+
 def cmd_validate(args: argparse.Namespace) -> int:
     """Check that a task is well-posed before anyone is scored against it.
 
@@ -284,6 +378,12 @@ def main(argv: list[str] | None = None) -> int:
                         "import the plant or open a socket (see rtcbench.sandbox "
                         "for what this does and does not guarantee)")
     p.set_defaults(func=cmd_score)
+
+    p = sub.add_parser("check", help="pre-flight a controller against the interface")
+    p.add_argument("--task", required=True)
+    p.add_argument("--controller", required=True)
+    p.add_argument("--sandbox", action="store_true")
+    p.set_defaults(func=cmd_check)
 
     p = sub.add_parser("validate", help="check a task is well-posed before scoring anyone on it")
     p.add_argument("--task", required=True)

@@ -571,3 +571,30 @@ def test_two_anchors_for_one_task_is_refused():
             encoding="utf-8")
         with pytest.raises(ValueError, match="Two anchors"):
             Task.load(root / "x_v1.yaml")
+
+
+def test_the_interface_stub_matches_the_real_dataclasses():
+    """The brief's documented shape is generated, so it cannot drift from the class.
+
+    Its absence was a measurable defect: models were told to use attribute access and left
+    to guess every field name, and one lost 40 of its 200 scenarios to `channel.min` (the
+    field is `.lo`) and `brief.actuator_ranges` (which does not exist). A hand-written stub
+    would have re-introduced that the first time a field was renamed.
+    """
+    import dataclasses
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "experiments"))
+    from commission import interface_stub
+
+    from rtcbench.controller import TaskBrief
+    from rtcbench.plant import Channel
+
+    stub = interface_stub()
+    for f in dataclasses.fields(TaskBrief):
+        assert f.name in stub, f"TaskBrief.{f.name} missing from the documented interface"
+    for f in dataclasses.fields(Channel):
+        assert f.name in stub, f"Channel.{f.name} missing from the documented interface"
+    # And it must not promise anything that does not exist.
+    for invented in ("actuator_ranges", "control_period", "y_min"):
+        assert invented not in stub

@@ -60,6 +60,52 @@ class Controller:
         Returns: numpy array of control values, one per actuator."""
 '''
 
+
+def interface_stub() -> str:
+    """The exact shape of `brief`, GENERATED from the dataclasses rather than written out.
+
+    This exists because its absence was a measurable defect. Models were told "brief is a
+    dataclass, use attribute access" and given a single example, then left to guess every
+    field name -- and they guessed. One model lost 40 of its 200 scenarios to
+    `channel.min` (the field is `.lo`) and `brief.actuator_ranges` (no such attribute),
+    both perfectly reasonable guesses from someone who has never seen the class. That is
+    the benchmark measuring API telepathy rather than control, and it flatters whichever
+    models happen to guess this codebase's naming conventions.
+
+    Generated from `dataclasses.fields`, never hand-written, so it cannot drift from the
+    real class the way a copied stub silently would.
+    """
+    import dataclasses
+
+    from rtcbench.controller import TaskBrief
+    from rtcbench.plant import Channel, Constraint
+
+    def fields_of(cls) -> str:
+        return "\n".join(
+            "    {}: {}".format(f.name, getattr(f.type, "__name__", f.type))
+            for f in dataclasses.fields(cls)
+        )
+
+    parts = [
+        "@dataclass",
+        "class Channel:          # every entry of brief.measurements and brief.actuators",
+        fields_of(Channel),
+        "    span -> float       # property: hi - lo",
+        "",
+        "@dataclass",
+        "class Constraint:       # every entry of brief.constraints",
+        fields_of(Constraint),
+        "",
+        "@dataclass",
+        "class TaskBrief:        # exactly what your __init__ receives",
+        fields_of(TaskBrief),
+        "    n_y -> int          # property: number of measurements",
+        "    n_u -> int          # property: number of actuators",
+        "    tags() -> dict      # method: maps tag string -> measurement index",
+    ]
+    return "\n".join(parts)
+
+
 SYSTEM = (
     "You are a control engineer commissioning a loop on a real process. You write "
     "production PID/MPC/adaptive control code. Respond with ONE fenced ```python block "
@@ -136,10 +182,16 @@ def build_brief_text(task: Task) -> str:
 
 
 def first_prompt(task: Task) -> str:
+    stub = interface_stub()
     return f"""{build_brief_text(task)}
 
 ## Your interface
 ```python{INTERFACE}```
+
+## Exactly what `brief` contains - these are the only attributes it has
+```python
+{stub}
+```
 
 ## Scoring
 Lower cost is better. Cost is w_error * tracking_error + w_effort * actuator_travel, with
