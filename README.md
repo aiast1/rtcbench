@@ -29,6 +29,16 @@ Blue beats doing nothing, red is worse than doing nothing, and the rightmost col
 suite score. **[The full report](leaderboard/report.html)** has all twenty models, per-cell
 detail and the raw [matrix](leaderboard/matrix_2026-08-24.json).
 
+> **Read the ranking as provisional below the top.** Every number here is a single
+> commissioning run, and run-to-run spread is large: re-running three models three times
+> each gave spreads of **0.107** (fable-5), **0.265** (grok-4.6) and **0.407**
+> (nemotron-super) — and ranks 1 to 6 span only **0.297**. So the leader is real and the
+> middle of the table is not reliably ordered. A three-repeat run with error bars is in
+> progress; it will supersede this.
+>
+> The spread itself is informative: the consistent models are the ones that never crash. A
+> submission that crashes on a task *sometimes* swings by that whole task's worth of score.
+
 Read it by **column**, not by row — a plant where most of the field is red is a plant that
 discriminates, and that is more useful than the ranking:
 

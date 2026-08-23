@@ -46,6 +46,28 @@ steady state. If that is true of any plant, everything published about it is wro
 **Done looks like:** every plant states what checked it and how far off it was, and nothing in
 the scored suite rests on self-consistency alone.
 
+## M1.5 — Error bars *(measured, and it is the biggest gap)*
+
+**Every published number is one commissioning run.** Re-running three models three times
+each:
+
+    fable-5           +0.553 +0.620 +0.513   spread 0.107
+    grok-4.6          +0.034 +0.227 +0.299   spread 0.265
+    nemotron-super    -0.420 -0.443 -0.036   spread 0.407
+
+Ranks 1-6 on the published leaderboard span 0.297. Nemotron's spread alone exceeds that, and
+grok's mean would move it four places. The top of the table is real; the middle is not
+reliably ordered, and a single-run ranking should not be quoted as one.
+
+The spread has structure worth keeping: the consistent model is the one that never crashes.
+A submission that crashes on a task *sometimes* swings by that whole task's worth of score,
+which is why reliability and variance are the same finding seen twice.
+
+- Three repeats minimum for any published run; report mean and spread, not a point.
+- The report and the README must show the interval, not just the rank.
+- Consider whether the headline should be the mean or the worst repeat -- the same argument
+  that made CVaR the per-task headline applies again one level up.
+
 ## M2 — Trustworthy scale
 
 **The problem:** all ten anchors are banks of independent PI loops, and on at least one plant
