@@ -46,6 +46,13 @@ MID_DARK = "#383835"
 
 PRETTY = {
     "us-anthropic-claude-fable-5": "Fable 5",
+    "us-anthropic-claude-fable-5-1": "Fable 5.1",
+    "us-anthropic-claude-opus-5-5": "Opus 5.5",
+    "us-openai-gpt-6-astra": "GPT-6 astra",
+    "us-openai-gpt-6-luna": "GPT-6 luna",
+    "us-openai-gpt-6-sol": "GPT-6 sol",
+    "global-moonshotai-kimi-k3": "Kimi K3",
+    "us-amazon-nova-2-lite-v1-0": "Nova 2 Lite",
     "us-anthropic-claude-sonnet-5": "Sonnet 5",
     "us-anthropic-claude-haiku-4-5-20251001-v1-0": "Haiku 4.5",
     "us-anthropic-claude-opus-5": "Opus 5",
