@@ -5,10 +5,14 @@ text. It is the wrong format everywhere else: LinkedIn, Slack, a slide and most 
 will not render SVG at all, so the figure that carries every result in this project could not
 be shown anywhere outside GitHub.
 
-Rasterising the SVG turned out to be the wrong way round. cairosvg needs a native cairo DLL
-that is not present on Windows, and svglib/reportlab hangs on this file. So this draws the
-same figure directly, importing `cell_color`, `PRETTY` and `TASK_LABEL` from `report` so the
-colours, names and column order cannot drift from the SVG they are meant to match.
+Rasterising the SVG is a dead end here, and both dead ends are the same one: cairo. cairosvg
+wants a native libcairo DLL that Windows does not ship, and svglib parses this file perfectly
+well before renderPM refuses it for want of the `rlPyCairo` backend -- which wants that same
+library. Any converter in this family needs cairo installed first; do not re-litigate it one
+package at a time.
+
+So this draws the same figure directly, importing `cell_color`, `PRETTY` and `TASK_LABEL`
+from `report` so the colours, names and column order cannot drift from the SVG it mirrors.
 
     python experiments/tile_png.py --matrix leaderboard/aggregate_2026-09-24.json
 """
