@@ -18,8 +18,8 @@ Ten plants, 190 tests, two dependencies, no GPU. A full scoring pass runs on a l
 
 ## The current standing
 
-Twenty models, ten plants, **three independent commissioning runs each** — 600 episodes
-through one identical harness.
+Twenty-eight models, ten plants, **three independent commissioning runs each** — 840
+episodes through one identical harness.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="leaderboard/matrix-dark.svg">
@@ -27,19 +27,25 @@ through one identical harness.
 </picture>
 
 Cells are means over three runs; the suite column carries the run-to-run interval. **[Full
-report](leaderboard/report.html)** · [aggregate](leaderboard/aggregate_2026-08-25.json).
+report](leaderboard/report.html)** · [aggregate](leaderboard/aggregate_2026-09-24.json).
 
 | | |
 |---|---|
-| Leader | **claude-fable-5**, **+0.576 ± 0.041** — and the tightest spread in the field |
-| Genuinely separated ranks | **1–3 and 16–17 only**; everywhere else the intervals overlap |
-| Median run-to-run spread | **0.259**, against a top-six span of 0.368 |
+| Leader on the mean | **claude-opus-5-5**, **+0.645 ± 0.118** — but read the next row first |
+| Genuinely separated ranks | **none.** No adjacent pair's intervals fail to overlap |
+| Median run-to-run spread | **0.248** — larger than the entire top-six span of **0.240** |
+| Tightest | **claude-fable-5**, spread **0.082**: second on the mean, first on consistency |
 | Widest | **glm-5**, ranging +0.364 to −0.482 on identical tasks |
 
-**Read the middle of the table as a band, not an order.** That is not a hedge — it is what
-three repeats measured, and it is why single-run leaderboards for this task are misleading.
-Running the suite once put gpt-5.6-sol at +0.337; its three-run mean is +0.471, a whole
-position band higher.
+**Read the table as a band, not an order.** At twenty models the top three were genuinely
+separated; at twenty-eight, nothing adjacent is. The field got denser while the noise stayed
+put, and the median run-to-run spread now *exceeds* the span of the entire top six. Even the
+leader is not separated from second place: claude-opus-5-5 ranges +0.546 to +0.781,
+claude-fable-5 +0.532 to +0.614.
+
+Two models added this run make the point on their own. claude-fable-5-1 scored +0.218 on its
+first run and +0.623 on its third; kimi-k3 went +0.504 then +0.087. Either single run would
+have supported a confident and wrong story about a model generation.
 
 Two findings from the repeats are worth more than the ranking:
 
@@ -50,8 +56,9 @@ noise had been the cause, removing the crashes would have collapsed it. So repea
 permanent policy here, not a one-off correction.
 
 **Reliability and control quality are separable.** Across the field, crashes correlate with
-suite score at −0.51 and gating at −0.55, while actuator movement correlates at +0.12.
-Whether a controller runs at all predicts its score better than how well it moves the valve.
+suite score at −0.40 and safety gating at −0.82. Among controllers that run cleanly, how much
+the valve actually moves correlates at +0.04 — nothing. Whether a controller survives its own
+scenarios predicts its score; how well it controls barely shows up until that is settled.
 
 ## What makes a score here mean something
 

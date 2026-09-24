@@ -116,7 +116,11 @@ def main(argv: list[str] | None = None) -> int:
               "quote the interval rather than the rank.")
 
     payload = {"suite": {m: agg[m]["mean"] for m in agg}, "aggregate": agg,
-               "per_task": per_task(runs), "repeats": len(runs),
+               "per_task": per_task(runs), "repeats": min(v["n"] for v in agg.values()) if agg else 0,
+        # Per MODEL, not the number of input matrices. Merging a 20-model run with an
+        # 8-model one gives six files but three runs each, and recording six there
+        # would overstate the evidence behind every number in the file.
+        "matrices": len(runs),
                "tasks": runs[0].get("tasks", {})}
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(payload, indent=2), encoding="utf-8")

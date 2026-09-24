@@ -42,7 +42,10 @@ def main(argv: list[str] | None = None) -> int:
         t = Task.load(p)
         current[t.task_id] = t.content_hash
 
-    results = sorted(Path(args.leaderboard).glob("matrix_*.json"))
+    # Both shapes: the per-run matrices AND the published aggregate the README links.
+    # Globbing only matrix_* left the one file readers actually cite unchecked.
+    results = (sorted(Path(args.leaderboard).glob("matrix_*.json"))
+               + sorted(Path(args.leaderboard).glob("aggregate_*.json")))
     if not results:
         print("no results files found")
         return 0
