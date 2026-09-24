@@ -23,7 +23,7 @@ episodes through one identical harness.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="leaderboard/matrix-dark.svg">
-  <img alt="RTCbench suite results: 20 models across 10 process plants, three repeats each, scored against well-tuned reference controllers" src="leaderboard/matrix-light.svg" width="100%">
+  <img alt="RTCbench suite results: 28 models across 10 process plants, three repeats each, scored against well-tuned reference controllers" src="leaderboard/matrix-light.svg" width="100%">
 </picture>
 
 Cells are means over three runs; the suite column carries the run-to-run interval. **[Full
